@@ -1,0 +1,6 @@
+# L'unica dipendenza: server web e client HTTP in un pezzo solo.
+# valo-readout.bat la installa da solo alla prima accensione.
+aiohttp>=3.9
+# Radici aggiornate: su un Windows che non aggiorna da tempo quella di
+# Let's Encrypt e' scaduta, e api.henrikdev.xyz diventa irraggiungibile.
+certifi

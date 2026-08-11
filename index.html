@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="valo-ui" content="55">
+<title>VALO-READOUT</title>
+<link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#0d1317;
+  --panel:#151e23;
+  --panel-2:#1b262c;
+  --raise:#1f2b32;
+  --rule:#2c3b43;
+  --ivory:#eceae4;
+  --muted:#9aa9af;
+  --dim:#71838a;
+  --signal:#f5a63c;
+  --rose:#e04a6b;
+  --win:#2ec27e;
+  --cyan:#3fc7dd;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --disp:"Inter",system-ui,-apple-system,sans-serif;
+
+  --t-iron:#7a8388;
+  --t-bronze:#b07a45;
+  --t-silver:#c2cbd1;
+  --t-gold:#e8c25a;
+  --t-plat:#42b7c6;
+  --t-diamond:#c48af0;
+  --t-ascendant:#2ec27e;
+  --t-immortal:#e5486d;
+  --t-radiant:#fff0b0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ground);color:var(--ivory);
+  font-family:var(--disp);
+  -webkit-font-smoothing:antialiased;
+}
+.label{
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"zero"}
+
+.shell{max-width:1320px;margin:0 auto;padding:0 24px 64px;min-height:100%}
+
+.top{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:22px 0 16px;border-bottom:1px solid var(--rule);
+}
+
+.actions{display:flex;align-items:center;gap:8px;flex:none}
+
+.brand{display:flex;align-items:center;gap:11px;flex:none}
+.mark{width:23px;height:23px;flex:none;display:block}
+.wordmark{
+  font-family:var(--disp);font-weight:800;
+  font-size:15px;letter-spacing:.2em;text-transform:uppercase;
+}
+.wordmark span{color:var(--signal)}
+.pill{
+  display:flex;align-items:center;gap:9px;
+  padding:6px 13px 6px 11px;border:1px solid var(--rule);border-radius:2px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+}
+.pill[hidden]{display:none}
+.pill.hot{border-color:var(--signal);color:var(--signal)}
+
+.pill.atk{border-color:var(--rose);color:var(--rose)}
+.pill.def{border-color:var(--cyan);color:var(--cyan)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
+.pill.hot .dot{background:var(--signal);animation:beat 1.9s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+.top .spacer{flex:1}
+
+.who{
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+  letter-spacing:normal;text-transform:none;font-weight:400;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.who b{color:var(--ivory);font-weight:600}
+button.act{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  background:none;color:var(--muted);border:1px solid var(--rule);border-radius:2px;
+  padding:7px 12px;cursor:pointer;transition:color .15s,border-color .15s;
+}
+button.act:hover{color:var(--signal);border-color:var(--signal)}
+button.act:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+button.act.danger:hover{color:var(--rose);border-color:var(--rose)}
+
+.banner{
+  margin-top:16px;padding:12px 16px;border-left:2px solid var(--signal);
+  background:var(--panel);font-family:var(--mono);font-size:12px;line-height:1.55;
+  color:var(--muted);
+}
+.banner b{color:var(--ivory);font-weight:600}
+.banner.bad{border-left-color:var(--rose)}
+.banner[hidden]{display:none}
+
+.body{padding-top:30px}
+@media (prefers-reduced-motion:reduce){
+  .pill.hot .dot{animation:none}
+}
+
+.readouts{display:flex;flex-direction:column;gap:2px;min-width:0}
+.card{min-width:0}
+.card{background:var(--panel);padding:20px 22px;min-width:0}
+.card + .card{border-top:1px solid var(--ground)}
+.card h2,.dlghead h2{
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:16px;
+}
+
+.card h2.fold{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:12px;
+}
+
+.card h2.rankhead{
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+}
+
+.foldbtn,.xbtn{
+  flex:none;width:30px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  background:none;color:var(--muted);
+  border:1px solid var(--rule);border-radius:2px;cursor:pointer;
+  font-family:var(--mono);font-size:15px;line-height:1;
+  transition:color .15s,border-color .15s;
+}
+.foldbtn::after{content:"−"}
+.xbtn::after{content:"×"}
+.foldbtn:hover,.xbtn:hover{color:var(--signal);border-color:var(--signal)}
+.foldbtn:focus-visible,.xbtn:focus-visible{
+  outline:2px solid var(--signal);outline-offset:2px;
+}
+.card.folded h2.fold{margin-bottom:0}
+.card.folded .foldbtn::after{content:"+"}
+.card.folded > :not(h2){display:none}
+
+.teams{display:flex;flex-direction:column;gap:22px}
+.team{background:var(--panel)}
+.team .th{display:block;padding-bottom:9px}
+.team .th em{font-style:normal;color:var(--dim);letter-spacing:.1em}
+table.roster{table-layout:fixed;margin-top:2px}
+.roster th,.roster td{padding-right:9px}
+.roster th:last-child,.roster td:last-child{padding-right:0}
+.roster td{padding-top:9px;padding-bottom:9px}
+
+.roster tbody td{height:37px;line-height:1.2}
+.roster .rk{max-width:100%;overflow:hidden}
+.roster tbody tr:last-child td{border-bottom:none}
+.roster .ag{width:74px}
+.roster .lv{width:44px}
+.roster .k,.roster .s{width:42px}
+.roster .h,.roster .w{width:48px}
+.roster .r{width:190px}
+.roster .pk{width:258px}
+
+.roster th.r,.roster td.r,.roster th.pk,.roster td.pk{text-align:left}
+.roster th.r,.roster td.r{padding-left:18px}
+.roster td.ag,.roster td.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster td.ag{color:var(--ivory);font-weight:500}
+.roster td.nm{
+  color:var(--ivory);font-family:var(--disp);font-size:13px;font-weight:400;
+}
+.roster td.lv{color:var(--dim);font-size:11px}
+.roster tbody tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+.roster tbody tr:hover td{background:var(--raise)}
+.roster td.r,.roster td.pk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster td.r.stale .rk{opacity:.45}
+.roster tr.me td.ag{color:var(--signal)}
+.roster tr.me td.nm{color:var(--signal);font-weight:600}
+.roster tr.soft td.ag{color:var(--dim);font-style:italic}
+.roster td.pending{color:var(--dim)}
+
+.roster td.nm a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.roster td.nm a:hover{color:var(--signal);border-bottom-color:currentColor}
+.roster td.nm a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+.rk{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--c,var(--dim));
+  white-space:nowrap;
+}
+.rk::before{
+  content:"";width:7px;height:7px;flex:none;
+  background:var(--c,var(--dim));transform:rotate(45deg);
+}
+
+.rk .lbl{display:inline-block;min-width:80px}
+.rk .act{color:var(--dim);letter-spacing:.05em;font-weight:400}
+.teamnote{font-family:var(--mono);font-size:11px;color:var(--muted);
+  line-height:1.6;padding:12px 0 4px}
+
+.tiername{
+  font-family:var(--disp);font-weight:800;
+  font-size:36px;letter-spacing:-.02em;line-height:1;text-transform:uppercase;
+}
+.rankrow{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.rrwrap{margin-top:16px}
+.rrbar{height:6px;background:var(--panel-2);position:relative;overflow:hidden}
+.rrfill{position:absolute;inset:0 auto 0 0;background:var(--signal);transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.rrmeta{display:flex;justify-content:space-between;margin-top:7px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;background:var(--rule)}
+
+.cell{background:var(--panel);padding:14px 16px 14px 18px}
+.grid .cell:first-child{padding-left:0}
+.cell .v{font-family:var(--mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
+.cell .v small{font-size:12px;color:var(--dim);font-weight:400}
+.cell .k{margin-bottom:7px}
+.cell .v.good{color:var(--signal)}
+.cell .v.bad{color:var(--rose)}
+.cell .v.up{text-transform:uppercase}
+
+.cell.wide{grid-column:span 2}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+thead th{
+  text-align:right;padding:0 0 9px;border-bottom:1px solid var(--rule);
+  font-size:9px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+}
+thead th.l,tbody td.l{text-align:left}
+thead th:first-child,tbody td:first-child{text-align:left}
+tbody td{padding:10px 0;border-bottom:1px solid #1e2b30;text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:none}
+td.res{width:20px;text-align:left}
+td.res i{display:inline-block;width:3px;height:15px;vertical-align:-3px}
+td.res i.w{background:var(--win)}
+td.res i.l{background:var(--rose)}
+td.res i.d{background:var(--dim)}
+td.map{color:var(--ivory);width:20%}
+td.agent{width:16%;color:var(--muted)}
+td.rr.up{color:var(--win)}
+td.rr.down{color:var(--rose)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{min-width:430px}
+.empty{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
+
+#keyCard{
+  margin:auto;
+  max-width:600px;width:calc(100% - 48px);
+  background:var(--panel);color:var(--ivory);
+  border:1px solid var(--rule);border-radius:2px;
+  padding:22px 24px 24px;
+}
+#keyCard::backdrop{background:rgba(6,10,12,.74)}
+.dlghead{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin-bottom:16px;
+}
+.dlghead h2{margin-bottom:0}
+
+.keynote{
+  font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--muted);
+  margin-bottom:14px;max-width:62ch;
+}
+.keynote a{color:var(--signal)}
+.keyrow{display:flex;gap:10px;align-items:stretch;max-width:520px}
+#keyInput{
+  flex:1;min-width:0;font-family:var(--mono);font-size:12px;letter-spacing:.04em;
+  background:var(--panel-2);color:var(--ivory);border:1px solid var(--rule);
+  border-radius:2px;padding:9px 12px;
+}
+#keyInput::placeholder{color:var(--dim)}
+#keyInput:focus{outline:none;border-color:var(--signal)}
+#keySave{padding:0 18px}
+
+#keyEye{padding:0 12px;min-width:98px}
+.keymsg{font-family:var(--mono);font-size:11.5px;margin-top:11px;min-height:1em}
+.keymsg.ok{color:var(--win)}
+.keymsg.bad{color:var(--rose)}
+
+.logwrap{max-height:280px;overflow-y:auto;font-family:var(--mono);font-size:11.5px}
+.logline{display:flex;gap:12px;padding:4px 0;line-height:1.5;align-items:baseline}
+.logline + .logline{border-top:1px solid #1a242a}
+.logline .lt{color:var(--dim);flex:none;font-variant-numeric:tabular-nums}
+.logline .lv{
+  flex:none;width:64px;font-size:9px;letter-spacing:.12em;color:var(--dim);
+}
+.logline .lm{color:var(--muted);min-width:0;word-break:break-word}
+.logline.warning .lv,.logline.warning .lm{color:var(--signal)}
+.logline.error .lv,.logline.error .lm{color:var(--rose)}
+
+table.hist{table-layout:fixed}
+.hist th.res{width:22px}
+.hist th.map{width:22%}
+.hist th.agent{width:18%}
+
+table.maps td{padding:11px 0}
+
+.maps td.mp{color:var(--ivory)}
+
+table.maps:not(.acts){table-layout:fixed}
+.maps:not(.acts) th.mp{width:34%}
+.maps:not(.acts) th.wr{width:auto}
+.maps th.mp{width:38%}
+.maps th.wr,.maps td.wr{width:88px;font-weight:600;color:var(--ivory)}
+.maps td.wr.good{color:var(--win)}
+.maps td.wr.bad{color:var(--rose)}
+
+.acts td.mp{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase}
+.acts td.mp em.dim{font-style:normal;color:var(--dim);font-size:10px}
+.acts th.pk,.acts td.pk{text-align:left;width:172px}
+
+.acts td.part{color:var(--dim)}
+.acts th.mp{width:28%}
+.maps td.w{color:var(--muted)}
+.maps td.w.has{color:var(--win)}
+.maps td.ls{color:var(--muted)}
+
+.foot{margin-top:26px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--dim);line-height:1.9}
+.foot a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.foot a:hover{color:var(--signal);border-bottom-color:currentColor}
+.foot a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+@media (max-width:760px){
+  .tiername{font-size:26px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 256 256" aria-hidden="true">
+        <rect width="256" height="256" rx="52" fill="#111a1f"/>
+        <g fill="#f5a63c">
+          <rect x="113" y="26" width="30" height="66" rx="7"/>
+          <rect x="113" y="164" width="30" height="66" rx="7"/>
+          <rect x="26" y="113" width="66" height="30" rx="7"/>
+          <rect x="164" y="113" width="66" height="30" rx="7"/>
+          <circle cx="128" cy="128" r="18"/>
+        </g>
+      </svg>
+      <div class="wordmark">valo<span>·</span>readout</div>
+    </div>
+    <div class="pill" id="statePill"><i class="dot"></i><span id="stateText">in attesa</span></div>
+    <div class="pill" id="modePill" hidden><span id="modeText"></span></div>
+    <div class="pill" id="mapPill" hidden><span id="mapText"></span></div>
+    <div class="pill" id="sidePill" hidden><span id="sideText"></span></div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="act" id="keyBtn" data-i18n="keyBtn">chiave</button>
+      <button class="act" id="refresh" data-i18n="refresh">aggiorna</button>
+      <button class="act" id="langBtn">ENGLISH</button>
+      <button class="act danger" id="closeBtn" data-i18n="close">chiudi</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <div class="body">
+
+    <div class="readouts">
+
+      <section class="card" id="rosterCard" hidden>
+        <h2 id="rosterTitle">Squadre</h2>
+        <div id="rosterBox"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="rankhead"><span data-i18n="rank">Rank</span>
+          <span class="who" id="who">—</span></h2>
+        <div class="rankrow">
+          <div>
+            <div class="tiername" id="tierName">—</div>
+            <div class="label" id="actLine" style="margin-top:9px"></div>
+          </div>
+          <div style="text-align:right">
+            <div class="label" data-i18n="peak">peak</div>
+            <div class="num" id="peakName" style="font-size:15px;margin-top:5px">—</div>
+          </div>
+        </div>
+        <div class="rrwrap">
+          <div class="rrbar"><div class="rrfill" id="rrFill" style="width:0"></div></div>
+          <div class="rrmeta">
+            <span class="label" data-i18n="rr">ranked rating</span>
+            <span class="num" id="rrText" style="font-size:11px;color:var(--muted)">—</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="aggTitle">Ultime partite</h2>
+        <div class="grid" id="agg"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="fold"><span data-i18n="history">Storico</span>
+          <button class="foldbtn" type="button" data-fold="hist"></button></h2>
+        <div id="histBox"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="fold"><span data-i18n="maps">Mappe</span>
+          <button class="foldbtn" type="button" data-fold="maps"></button></h2>
+        <div id="mapsBox"></div>
+      </section>
+
+      <section class="card" id="actsCard" hidden>
+        <h2 class="fold"><span data-i18n="actsTitle">Tutti gli act</span>
+          <button class="foldbtn" type="button" data-fold="acts"></button></h2>
+        <div id="actsBox"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="fold"><span data-i18n="log">Registro</span>
+          <button class="foldbtn" type="button" data-fold="log"></button></h2>
+        <div id="logBox"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <p class="foot"><span id="stamp">—</span> · <span id="appver"></span></p>
+</div>
+
+<dialog id="keyCard">
+  <div class="dlghead">
+    <h2 data-i18n="keyTitle">Api key</h2>
+    <button class="xbtn" type="button" id="keyClose"></button>
+  </div>
+  <p class="keynote" id="keyNote"></p>
+  <div class="keyrow">
+    <input id="keyInput" type="password" placeholder="HDEV-..."
+           spellcheck="false" autocomplete="off">
+    <button class="act" id="keyEye" data-i18n="keyShow">mostra</button>
+    <button class="act" id="keySave" data-i18n="keySave">salva</button>
+  </div>
+  <p class="keymsg" id="keyMsg"></p>
+</dialog>
+
+<script>
+"use strict";
+
+const TIERS = ["Unranked","-","-","Iron 1","Iron 2","Iron 3","Bronze 1","Bronze 2","Bronze 3",
+  "Silver 1","Silver 2","Silver 3","Gold 1","Gold 2","Gold 3","Platinum 1","Platinum 2","Platinum 3",
+  "Diamond 1","Diamond 2","Diamond 3","Ascendant 1","Ascendant 2","Ascendant 3",
+  "Immortal 1","Immortal 2","Immortal 3","Radiant"];
+const $ = (id) => document.getElementById(id);
+
+const I18N = {
+  it: {
+    refresh:"aggiorna", close:"chiudi", other:"ENGLISH",
+    waiting:"in attesa", error:"errore", noGame:"gioco non attivo", menus:"nei menu",
+    teams:"Squadre", players:"Giocatori", agentSelect:"Agent select",
+    yourTeam:"la tua squadra", enemies:"avversari", ffa:"tutti contro tutti",
+    enemiesLater:"In agent select il client non espone la squadra avversaria: compare quando la partita comincia.",
+    rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
+    maps:"Mappe", log:"Registro",
+    agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    map:"mappa", colK:"k", colD:"d", colA:"a", colRR:"rr",
+    winPct:"v %", colW:"v", colL:"s",
+    kda:"kda", kdCell:"k / d", acsCell:"acs medio", hsCell:"headshot",
+    wrCell:"win rate", vs:"v \u2014 s", kpr:"kill / round", topAgent:"agente top",
+    noComp:"Nessuna competitive in questo act.",
+    noRecent:"Nessuna competitive recente.",
+    anon:"anonimo", actNow:"act in corso", comp:"competitive", of:"su",
+    updated:"aggiornato", mockTitle:"Dati di esempio.",
+    mockBody:"Avvia <code>python bridge.py</code> con Valorant aperto per i tuoi.",
+    errTitle:"Il ponte non riesce a leggere il client.",
+    openOn:"apri {n} su tracker.gg",
+    bye:"Ponte chiuso. Puoi chiudere questa scheda.",
+    keyTitle:"Api key",
+    keyBody:'Riot tiene in vista solo le tue ultime ~43 partite: tutto quello '
+      + 'che viene prima è già fuori portata. Con una chiave <b>HenrikDev</b> '
+      + "(gratuita) il tracker arriva a quasi tutto l'act, il tuo e quello "
+      + 'degli altri in partita. <b>Quasi</b>: quell\'archivio non è di Riot e '
+      + 'qualche partita non la registra, quindi i numeri diventano molto più '
+      + 'solidi, ma non esatti al centesimo. '
+      + '<a href="https://api.henrikdev.xyz/dashboard/" target="_blank" '
+      + 'rel="noopener">Prendila qui</a>',
+    atk:"attacco", def:"difesa",
+    actsTitle:"Tutti gli act", actCol:"act",
+    hide:"nascondi", show:"mostra",
+    onSample:"calcolato sulle {n} partite che l'archivio conserva",
+    keyBtn:"chiave", keyShow:"mostra", keyHide:"nascondi",
+    keySave:"salva", keyWait:"controllo…",
+    keyOk:"Chiave salvata. Ricalcolo le medie.",
+    keyNew:"Chiave salvata. L'archivio non conosce ancora questo account: "
+      + "si popola dopo la prossima partita, fino ad allora restano i dati Riot.",
+    keyBad:"Chiave non accettata: {w}",
+  },
+  en: {
+    refresh:"refresh", close:"quit", other:"ITALIANO",
+    waiting:"waiting", error:"error", noGame:"game not running", menus:"in menus",
+    teams:"Teams", players:"Players", agentSelect:"Agent select",
+    yourTeam:"your team", enemies:"enemies", ffa:"free for all",
+    enemiesLater:"In agent select the client does not expose the enemy team: it shows up once the match starts.",
+    rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
+    maps:"Maps", log:"Log",
+    agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    map:"map", colK:"k", colD:"d", colA:"a", colRR:"rr",
+    winPct:"win %", colW:"w", colL:"l",
+    kda:"kda", kdCell:"k / d", acsCell:"avg acs", hsCell:"headshot",
+    wrCell:"win rate", vs:"w \u2014 l", kpr:"kills / round", topAgent:"top agent",
+    noComp:"No competitive matches this act.",
+    noRecent:"No recent competitive matches.",
+    anon:"hidden", actNow:"current act", comp:"competitive", of:"of",
+    updated:"updated", mockTitle:"Sample data.",
+    mockBody:"Run <code>python bridge.py</code> with Valorant open for your own.",
+    errTitle:"The bridge cannot read the client.",
+    openOn:"open {n} on tracker.gg",
+    bye:"Bridge closed. You can close this tab.",
+    keyTitle:"Api key",
+    keyBody:'Riot only keeps your last ~43 matches in view: everything before '
+      + 'that is already out of reach. With a free <b>HenrikDev</b> key the '
+      + 'tracker reaches almost the whole act, yours and everyone else\'s in '
+      + 'the lobby. <b>Almost</b>: that archive is not Riot\'s and some matches '
+      + 'never make it in, so the numbers get far more solid, but not exact. '
+      + '<a href="https://api.henrikdev.xyz/dashboard/" target="_blank" '
+      + 'rel="noopener">Get one here</a>',
+    atk:"attack", def:"defense",
+    actsTitle:"All acts", actCol:"act",
+    hide:"hide", show:"show",
+    onSample:"computed on the {n} matches the archive kept",
+    keyBtn:"key", keyShow:"show", keyHide:"hide",
+    keySave:"save", keyWait:"checking…",
+    keyOk:"Key saved. Recomputing averages.",
+    keyNew:"Key saved. The archive does not know this account yet: it fills in "
+      + "after your next match, until then Riot data is used.",
+    keyBad:"Key not accepted: {w}",
+  },
+};
+let lang = localStorage.getItem("valoLang") === "en" ? "en" : "it";
+const t = (k) => (I18N[lang][k] ?? k);
+
+const tb = (it, en) => (lang === "en" ? (en || it) : it) || "";
+let lastState = null;
+
+let keyOpen = false, keyAsked = false;
+
+function applyStatic() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll("[data-i18n]"))
+    el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-html]"))
+    el.innerHTML = t(el.dataset.i18nHtml);
+  $("langBtn").textContent = t("other");
+  $("keyEye").textContent = t($("keyInput").type === "text" ? "keyHide" : "keyShow");
+}
+
+function setLang(next) {
+  lang = next;
+  localStorage.setItem("valoLang", lang);
+  applyStatic();
+  applyFolds();
+  if (lastState) render(lastState);
+}
+
+const LOOP_LABEL = {
+  MENUS:{it:"nei menu",en:"in menus"}, PREGAME:{it:"agent select",en:"agent select"},
+  INGAME:{it:"in partita",en:"in game"}, AWAY:{it:"assente",en:"away"},
+  OFFLINE:{it:"offline",en:"offline"},
+};
+
+function render(s) {
+  lastState = s;
+  const live = s.live || {};
+  const rank = s.rank || {};
+  const agg  = s.recent || {};
+  const inGame = live.loopState === "INGAME" || live.loopState === "PREGAME";
+
+  const pill = $("statePill");
+  pill.classList.toggle("hot", inGame);
+  $("stateText").textContent = s.bridge === "error" ? t("error")
+    : s.bridge === "waiting_game" ? t("noGame")
+    : ((LOOP_LABEL[live.loopState] || {})[lang] || t("menus"));
+
+  const chip = (id, txt, value) => {
+    const el = $(id);
+    el.hidden = !value || value === "—";
+    if (!el.hidden) $(txt).textContent = value;
+  };
+  chip("modePill", "modeText", (s.roster || {}).queue || live.queue);
+  chip("mapPill", "mapText", (s.roster || {}).map || live.map);
+  const lato = (s.roster || {}).side;
+  chip("sidePill", "sideText", lato ? t(lato === "attacco" ? "atk" : "def") : "");
+  $("sidePill").classList.toggle("atk", lato === "attacco");
+  $("sidePill").classList.toggle("def", lato === "difesa");
+
+  const acc = s.account || {};
+  $("who").innerHTML = acc.name
+    ? `<b>${esc(acc.name)}</b>#${esc(acc.tag || "")} · ${esc((acc.region || "").toUpperCase())}`
+    : "&mdash;";
+
+  const b = $("banner");
+  if (s.bridge === "error" || s.error) {
+    b.hidden = false;
+    b.className = "banner bad";
+    b.innerHTML = `<b>${t("errTitle")}</b> ${esc(tb(s.error, s.errorEn))}`;
+  } else if (s.mock) {
+    b.hidden = false;
+    b.className = "banner";
+    b.innerHTML = `<b>${t("mockTitle")}</b> ${t("mockBody")}`;
+  } else {
+    b.hidden = true;
+  }
+
+  const known = !!(s.account && s.account.name);
+  if (s.henrik === false && known && !keyAsked) { keyAsked = true; keyOpen = true; }
+  $("keyBtn").hidden = !known;
+  const dlg = $("keyCard");
+  const vuole = keyOpen && known;
+  if (vuole && !dlg.open) dlg.showModal();
+  else if (!vuole && dlg.open) dlg.close();
+  if (known) {
+    const ki = $("keyInput");
+    if (document.activeElement !== ki) ki.value = s.henrikKey || "";
+    const nota = $("keyNote");
+    nota.hidden = !!s.henrikKey;
+    nota.innerHTML = s.henrikKey ? "" : t("keyBody");
+  }
+
+  renderRoster(s.roster || {});
+
+  $("tierName").textContent = rank.tierName || "—";
+  $("tierName").style.color = tierColor(rank.tier);
+  $("rrFill").style.background = tierColor(rank.tier);
+  $("peakName").innerHTML = rankChip(rank.peakTier, rank.peakTierName,
+                                     null, rank.peakRR);
+  $("actLine").textContent = rank.actGames
+    ? `${rank.actName || t("actNow")} · ${rank.actWins}${t("colW")} / ${rank.actGames}` : "";
+
+  const isTop = rank.tier != null && rank.tier >= 24;
+  $("rrFill").style.width = (isTop ? 100 : Math.min(rank.rr || 0, 100)) + "%";
+  $("rrText").textContent = rank.rr == null ? "—"
+    : isTop ? `${rank.rr} RR` : `${rank.rr} / 100`;
+
+  const actName = rank.actName || t("actNow");
+  const tot = agg.actGames || 0;
+  $("aggTitle").textContent = !agg.games ? actName
+    : tot > agg.games
+      ? `${actName} · ${agg.games} ${t("of")} ${tot} ${t("comp")}`
+      : `${actName} · ${agg.games} ${t("comp")}`;
+  $("agg").innerHTML = !agg.games ? `<div class="cell"><div class="empty">${t("noComp")}</div></div>` : [
+    cell(t("kda"), dec(agg.kda), null, agg.kda >= 1.2 ? "good" : agg.kda < 0.9 ? "bad" : ""),
+    cell(t("kdCell"), dec(agg.kd)),
+    cell(t("acsCell"), Math.round(agg.acs)),
+    cell(t("hsCell"), agg.hs, "%"),
+    cell(t("wrCell"), agg.winRate, "%", agg.winRate >= 55 ? "good" : agg.winRate < 45 ? "bad" : ""),
+    cell(t("vs"), `${agg.wins}–${agg.losses}`),
+    cell(t("kpr"), dec(agg.killsPerRound)),
+    agg.bestAgent ? cellText(t("topAgent"), agg.bestAgent, `${dec(agg.bestAgentKda)} kda`) : "",
+  ].join("");
+
+  $("histBox").innerHTML = !(s.matches || []).length
+    ? `<div class="empty">${t("noRecent")}</div>`
+    : `<div class="scroll"><table class="hist">
+        <thead><tr><th class="res"></th><th class="map l">${t("map")}</th>
+        <th class="agent l">${t("agent")}</th>
+        <th>${t("colK")}</th><th>${t("colD")}</th><th>${t("colA")}</th>
+        <th>${t("acs")}</th><th>${t("hs")}</th><th>${t("colRR")}</th></tr></thead>
+        <tbody>${s.matches.map(matchRow).join("")}</tbody></table></div>`;
+
+  const acts = s.acts || [];
+  $("actsCard").hidden = !acts.length;
+  if (acts.length) $("actsBox").innerHTML = `<div class="scroll"><table class="maps acts">
+        <thead><tr><th class="l mp">${t("actCol")}</th><th class="l pk">${t("peak")}</th>
+        <th class="wr">${t("winPct")}</th>
+        <th>${t("colW")}</th><th>${t("colL")}</th><th>${t("kd")}</th>
+        <th>${t("acs")}</th><th>${t("hs")}</th></tr></thead>
+        <tbody>${acts.map(actRow).join("")}</tbody></table></div>`;
+
+  const maps = agg.maps || [];
+  $("mapsBox").innerHTML = !maps.length
+    ? `<div class="empty">${t("noComp")}</div>`
+    : `<div class="scroll"><table class="maps">
+        <thead><tr><th class="l mp">${t("map")}</th><th class="wr">${t("winPct")}</th>
+        <th>${t("colW")}</th><th>${t("colL")}</th><th>${t("kd")}</th>
+        <th>${t("acs")}</th><th>${t("hs")}</th></tr></thead>
+        <tbody>${maps.map(mapRow).join("")}</tbody></table></div>`;
+
+  const loc = lang === "en" ? "en-GB" : "it-IT";
+  const lines = s.log || [];
+  const box = $("logBox");
+  box.innerHTML = !lines.length
+    ? '<div class="empty">—</div>'
+    : `<div class="logwrap" id="logWrap">${lines.map((e) => `
+        <div class="logline ${esc((e.level || "").toLowerCase())}">
+          <span class="lt">${new Date(e.at * 1000).toLocaleTimeString(loc)}</span>
+          <span class="lv">${esc(e.level || "")}</span>
+          <span class="lm">${esc(tb(e.text, e.en))}</span>
+        </div>`).join("")}</div>`;
+  const wrap = $("logWrap");
+  if (wrap) wrap.scrollTop = wrap.scrollHeight;
+
+  $("stamp").textContent = s.updatedAt
+    ? t("updated") + " " + new Date(s.updatedAt * 1000).toLocaleTimeString(loc) : "—";
+}
+
+function renderRoster(r) {
+  const card = $("rosterCard");
+  const allies = r.allies || [], enemies = r.enemies || [];
+  if (!allies.length && !enemies.length) { card.hidden = true; return; }
+
+  card.hidden = false;
+  $("rosterTitle").textContent = r.ffa ? t("players")
+    : r.loop === "PREGAME" ? t("agentSelect") : t("teams");
+
+  const body = r.ffa
+    ? teamCol(t("ffa"), allies.concat(enemies))
+    : `${teamCol(t("yourTeam"), allies)}
+       ${enemies.length
+        ? teamCol(t("enemies"), enemies)
+        : `<div class="team"><div class="label th">${t("enemies")}</div>
+             <div class="teamnote">${t("enemiesLater")}</div></div>`}`;
+
+  $("rosterBox").innerHTML = `<div class="teams">${body}</div>`;
+}
+
+const teamCol = (title, rows) => `<div class="team">
+    <div class="label th">${title} <em>· ${rows.length}</em></div>
+    <table class="roster">
+      <thead><tr>
+        <th class="l ag">${t("agent")}</th><th class="l nm">${t("name")}</th>
+        <th class="lv">${t("lvl")}</th>
+        <th class="k">${t("kd")}</th><th class="s">${t("acs")}</th>
+        <th class="h">${t("hs")}</th><th class="w">${t("wr")}</th>
+        <th class="r">${t("rank")}</th><th class="pk">${t("peak")}</th>
+      </tr></thead>
+      <tbody>${rows.map(playerRow).join("")}</tbody>
+    </table>
+  </div>`;
+
+function stat(p, read) {
+  if (!p.stats) return '<td class="pending">·</td>';
+  if (!p.stats.games) return "<td>—</td>";
+  const v = read(p.stats);
+  return `<td>${v == null ? "—" : esc(v)}</td>`;
+}
+
+const TIER_COLORS = [
+  [27, "--t-radiant"], [24, "--t-immortal"], [21, "--t-ascendant"],
+  [18, "--t-diamond"], [15, "--t-plat"], [12, "--t-gold"],
+  [9, "--t-silver"], [6, "--t-bronze"], [3, "--t-iron"],
+];
+function tierColor(tier) {
+  if (tier == null) return "var(--dim)";
+  for (const [min, name] of TIER_COLORS) if (tier >= min) return `var(${name})`;
+  return "var(--dim)";
+}
+
+function rankChip(tier, label, act, rr) {
+  if (!label || label === "—") return '<span class="rk">—</span>';
+  const extra = act ? `· ${act}`
+    : (tier != null && tier >= 24 && rr != null ? `· ${rr} RR` : "");
+  return `<span class="rk" style="--c:${tierColor(tier)}">`
+    + `<span class="lbl">${esc(label)}</span>`
+    + (extra ? `<span class="act">${esc(extra)}</span>` : "") + "</span>";
+}
+
+const trackerUrl = (name) =>
+  "https://tracker.gg/valorant/profile/riot/"
+  + encodeURIComponent(name.replace("#", "#")) + "/overview";
+
+function playerRow(p) {
+  const name = p.incognito ? t("anon") : (p.name || "—");
+  const cls = (p.me ? " me" : "") + (p.locked === false ? " soft" : "");
+  const lvl = p.level == null ? "—" : p.level;
+  const shown = p.incognito || !p.name
+    ? esc(name)
+    : `<a href="${esc(trackerUrl(p.name))}" target="_blank" rel="noopener"
+         title="${esc(t("openOn").replace("{n}", p.name))}">${esc(p.name)}</a>`;
+  return `<tr class="${cls.trim()}">
+      <td class="ag l">${esc(p.agent)}</td>
+      <td class="nm l">${shown}</td>
+      <td class="lv">${esc(lvl)}</td>
+      ${stat(p, s => dec(s.kd))}
+      ${stat(p, s => s.acs)}
+      ${stat(p, s => s.hs == null ? null : s.hs + "%")}
+      ${stat(p, s => s.winRate == null ? null : s.winRate + "%")}
+      <td class="r${p.stale ? " stale" : ""}">${rankChip(p.tier, p.tierName, "", p.rr)}</td>
+      <td class="pk">${rankChip(p.peakTier, p.peakTierName, p.peakAct)}</td>
+    </tr>`;
+}
+
+function mapRow(m) {
+  const wr = m.winRate;
+  const tone = wr == null ? "" : wr >= 55 ? " good" : wr < 45 ? " bad" : "";
+  return `<tr>
+    <td class="mp l">${esc(m.map)}</td>
+    <td class="wr${tone}">${wr == null ? "—" : wr + "%"}</td>
+    <td class="w${m.wins ? " has" : ""}">${m.wins}</td>
+    <td class="ls">${m.losses}</td>
+    <td>${dec(m.kd)}</td>
+    <td>${m.acs == null ? "—" : m.acs}</td>
+    <td>${m.hs == null ? "—" : m.hs + "%"}</td>
+  </tr>`;
+}
+
+function actRow(a) {
+  const wr = a.winRate;
+  const tone = wr == null ? "" : wr >= 55 ? " good" : wr < 45 ? " bad" : "";
+  const tot = a.actGames || a.games;
+  const parziale = a.actGames > a.games;
+  const su = parziale
+    ? ` class="part" title="${esc(t("onSample").replace("{n}", a.games))}"` : "";
+  return `<tr>
+    <td class="mp l">${esc(a.name)} <em class="dim">· ${tot}</em></td>
+    <td class="pk l">${rankChip(a.peakTier, a.peakTierName, null, a.peakRR)}</td>
+    <td class="wr${tone}">${wr == null ? "—" : wr + "%"}</td>
+    <td class="w${a.wins ? " has" : ""}">${a.wins}</td>
+    <td class="ls">${a.losses}</td>
+    <td${su}>${dec(a.kd)}</td>
+    <td${su}>${a.acs == null ? "—" : Math.round(a.acs)}</td>
+    <td${su}>${a.hs == null ? "—" : a.hs + "%"}</td>
+  </tr>`;
+}
+
+function matchRow(m) {
+  const sh = m.shots || {};
+  const tot = (sh.head || 0) + (sh.body || 0) + (sh.leg || 0);
+  const hs = tot ? Math.round(sh.head / tot * 100) : null;
+  const res = m.won === true ? "w" : m.won === false ? "l" : "d";
+  const rr = m.rrDelta;
+  return `<tr>
+    <td class="res"><i class="${res}"></i></td>
+    <td class="map l">${esc(m.map)}</td>
+    <td class="agent l">${esc(m.agent)}</td>
+    <td>${m.kills}</td><td>${m.deaths}</td><td>${m.assists}</td>
+    <td>${Math.round(m.acs)}</td>
+    <td>${hs == null ? "—" : hs + "%"}</td>
+    <td class="rr ${rr > 0 ? "up" : rr < 0 ? "down" : ""}">${rr == null ? "—" : (rr > 0 ? "+" : "") + rr}</td>
+  </tr>`;
+}
+
+const dec = (v) => (v == null || v === "" ? "—" : Number(v).toFixed(2));
+const esc = (v) => String(v ?? "—").replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cell = (k, v, unit, tone) =>
+  `<div class="cell"><div class="label k">${k}</div>
+   <div class="v ${tone || ""}">${esc(v)}${unit ? `<small>${unit}</small>` : ""}</div></div>`;
+const cellText = (k, v, sub) =>
+  `<div class="cell wide"><div class="label k">${k} · ${esc(sub)}</div>
+   <div class="v up">${esc(v)}</div></div>`;
+
+let ws = null, gotState = false;
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = (ev) => { gotState = true; render(JSON.parse(ev.data)); };
+  ws.onclose = () => setTimeout(connect, 3000);
+  ws.onerror = () => {};
+}
+
+$("refresh").addEventListener("click", () => {
+  if (ws && ws.readyState === 1) ws.send("refresh");
+});
+
+$("langBtn").addEventListener("click", () => setLang(lang === "it" ? "en" : "it"));
+
+const FOLDED = new Set((() => {
+  const salvato = localStorage.getItem("valoFolded");
+  if (salvato === null) return ["acts"];
+  try { return JSON.parse(salvato) || []; } catch (e) { return []; }
+})());
+
+function applyFolds() {
+  document.querySelectorAll(".foldbtn").forEach((b) => {
+    const chiusa = FOLDED.has(b.dataset.fold);
+    b.closest(".card").classList.toggle("folded", chiusa);
+    b.setAttribute("aria-expanded", String(!chiusa));
+    b.title = t(chiusa ? "show" : "hide");
+  });
+}
+
+(() => {
+  const meta = document.querySelector('meta[name="valo-ui"]');
+  const box = $("appver");
+  box.textContent =
+    `v${meta ? meta.content : "?"} · © ${new Date().getFullYear()} DevHachiman · `;
+  const a = document.createElement("a");
+  a.href = "https://github.com/DevHachiman";
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = "github.com/DevHachiman";
+  box.appendChild(a);
+})();
+
+document.querySelectorAll(".foldbtn").forEach((b) => {
+  b.addEventListener("click", () => {
+    const k = b.dataset.fold;
+    if (FOLDED.has(k)) FOLDED.delete(k); else FOLDED.add(k);
+    localStorage.setItem("valoFolded", JSON.stringify([...FOLDED]));
+    applyFolds();
+  });
+});
+applyFolds();
+
+async function saveKey() {
+  const key = $("keyInput").value.trim();
+  if (!key) return;
+  const msg = $("keyMsg"), btn = $("keySave");
+  btn.disabled = true;
+  msg.className = "keymsg";
+  msg.textContent = t("keyWait");
+  try {
+    const r = await fetch("/api/henrik-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      msg.className = "keymsg ok";
+      msg.textContent = t(d.note === "nuovo" ? "keyNew" : "keyOk");
+    } else {
+      msg.className = "keymsg bad";
+      msg.textContent = t("keyBad").replace("{w}", tb(d.why, d.whyEn) || "?");
+    }
+  } catch (e) {
+    msg.className = "keymsg bad";
+    msg.textContent = t("keyBad").replace("{w}", e);
+  }
+  btn.disabled = false;
+}
+$("keySave").addEventListener("click", saveKey);
+$("keyInput").addEventListener("keydown", (e) => { if (e.key === "Enter") saveKey(); });
+
+$("keyClose").addEventListener("click", () => { keyOpen = false; $("keyCard").close(); });
+$("keyCard").addEventListener("close", () => { keyOpen = false; });
+$("keyCard").addEventListener("click", (e) => {
+  if (e.target === $("keyCard")) { keyOpen = false; $("keyCard").close(); }
+});
+
+$("keyBtn").addEventListener("click", () => {
+  keyOpen = !keyOpen;
+  keyAsked = true;
+  if (lastState) render(lastState);
+  if (keyOpen) $("keyInput").focus();
+});
+
+$("keyEye").addEventListener("click", () => {
+  const ki = $("keyInput"), nascosta = ki.type === "password";
+  ki.type = nascosta ? "text" : "password";
+  $("keyEye").textContent = t(nascosta ? "keyHide" : "keyShow");
+});
+
+$("closeBtn").addEventListener("click", async () => {
+  try { await fetch("/api/quit", { method: "POST" }); } catch (e) {}
+  if (ws) { ws.onclose = null; ws.close(); }
+  window.close();
+  document.body.innerHTML =
+    `<p style="font-family:var(--mono);color:var(--muted);padding:48px 32px">${t("bye")}</p>`;
+});
+
+applyStatic();
+
+if (location.protocol === "file:") {
+  demo();
+} else {
+  connect();
+  setTimeout(() => { if (!gotState) demo(); }, 2000);
+}
+
+function demo() {
+  const maps = ["Ascent", "Haven", "Lotus", "Split", "Sunset", "Abyss"];
+  const agents = ["Jett", "Reyna", "Omen", "Sova", "Killjoy", "Chamber"];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const ri = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
+
+  const matches = [];
+  for (let i = 0; i < 10; i++) {
+    const won = rnd() > 0.45;
+    matches.push({
+      map: pick(maps), agent: pick(agents),
+      kills: ri(9, 27), deaths: ri(8, 21), assists: ri(2, 9),
+      acs: ri(160, 310), rounds: ri(16, 25),
+      shots: { head: ri(20, 45), body: ri(70, 130), leg: ri(3, 14) },
+      won, rrDelta: won ? ri(12, 26) : -ri(10, 22),
+    });
+  }
+  const sum = (f) => matches.reduce((t, m) => t + f(m), 0);
+  const k = sum(m => m.kills), d = sum(m => m.deaths), a = sum(m => m.assists);
+  const head = sum(m => m.shots.head);
+  const shots = head + sum(m => m.shots.body + m.shots.leg);
+  const wins = matches.filter(m => m.won).length;
+
+  const who = (name, agent, ally, tier, me) => {
+    const peak = Math.min(tier + ri(0, 4), 27);
+    return {
+      me: !!me, ally, agent, name, locked: true, incognito: false,
+      tier, tierName: TIERS[tier] || "—", stale: false,
+      level: ri(40, 380),
+      peakTier: peak, peakTierName: TIERS[peak] || "—",
+      peakAct: pick(["V26 // ACT II", "V25 // ACT VI", "EPISODE 9 // ACT III"]),
+      stats: { games: 3, kda: +(rnd() * 1.3 + 0.8).toFixed(2),
+               acs: ri(150, 320), winRate: ri(0, 3) * 33 },
+    };
+  };
+
+  render({
+    bridge: "connected", mock: true,
+    account: { name: "Esempio", tag: "EUW", region: "eu" },
+    roster: {
+      loop: "INGAME", map: "Ascent", queue: "Competitive",
+      allies: [
+        who("Esempio#EUW", "Jett", true, 19, true),
+        who("Vetta#IT1", "Omen", true, 20),
+        who("Corvo#900", "Killjoy", true, 19),
+        who("Nadir#EUW", "Sova", true, 18),
+        who("Brina#TAG", "Sage", true, 17),
+      ],
+      enemies: [
+        who("Aster#EUW", "Raze", false, 21),
+        who("Kobal#77", "Viper", false, 19),
+        who("Sirio#IT2", "Chamber", false, 19),
+        who("Talpa#EUW", "Skye", false, 18),
+        who("Zenit#123", "Cypher", false, 16),
+      ],
+    },
+    live: { loopState: "INGAME", loopLabel: "In partita", queue: "Competitive",
+            map: "Ascent", partySize: 2, score: [8, 5], roundsPlayed: 13 },
+    rank: { tier: 19, tierName: "Diamond 2", rr: 62, peakTier: 22,
+            peakTierName: "Ascendant 2", actWins: 34, actGames: 61,
+            actName: "Act IV" },
+    recent: {
+      games: matches.length, kd: +(k / d).toFixed(2), kda: +((k + a) / d).toFixed(2),
+      acs: sum(m => m.acs) / matches.length, hs: +(head / shots * 100).toFixed(1),
+      winRate: Math.round(wins / matches.length * 100), wins, losses: matches.length - wins,
+      killsPerRound: +(k / sum(m => m.rounds)).toFixed(2),
+      bestAgent: matches[0].agent, bestAgentKda: 1.31,
+    },
+    matches, updatedAt: Date.now() / 1000,
+  });
+}
+</script>
+</body>
+</html>
