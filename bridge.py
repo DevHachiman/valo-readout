@@ -160,7 +160,7 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "55"
+UI_VERSION = "56"
 
 
 def find_index() -> "Path | None":
@@ -211,6 +211,21 @@ SHARD_BY_REGION = {
     "na": "na", "latam": "na", "br": "na",
     "eu": "eu", "ap": "ap", "kr": "kr", "pbe": "pbe",
 }
+
+REGION_ALIAS = {
+    "euw": "eu", "euw1": "eu", "eune": "eu", "eun1": "eu", "eu1": "eu",
+    "tr": "eu", "tr1": "eu", "ru": "eu", "ru1": "eu", "me": "eu", "me1": "eu",
+    "oce": "ap", "oc1": "ap", "sg": "ap", "sg2": "ap", "tw": "ap", "tw2": "ap",
+    "vn": "ap", "vn2": "ap", "th": "ap", "th2": "ap", "ph": "ap", "ph2": "ap",
+    "id": "ap", "jp": "ap", "jp1": "ap", "sea": "ap",
+    "lan": "latam", "la1": "latam", "las": "latam", "la2": "latam",
+    "na1": "na", "br1": "br", "kr1": "kr",
+}
+
+
+def normalize_region(region: str) -> tuple[str, str]:
+    region = REGION_ALIAS.get(region, region)
+    return region, SHARD_BY_REGION.get(region, "")
 
 CLIENT_PLATFORM = (
     "ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0K"
@@ -635,20 +650,35 @@ class RiotClient:
             )
             return
         m = self._log_search(r"https://glz-([a-z\-]+)-1\.([a-z]+)\.a\.pvp\.net")
-        if m:
+        if m and m.group(2) in SHARD_BY_REGION.values():
             self.region, self.shard = m.group(1), m.group(2)
             return
         with contextlib.suppress(Exception):
             rl = await self.local_get("/riotclient/region-locale")
-            region = str(rl.get("region", "")).lower()
-            if region:
-                self.region = region
-                self.shard = SHARD_BY_REGION.get(region, region)
+            region, shard = normalize_region(str(rl.get("region", "")).lower())
+            if region and shard:
+                self.region, self.shard = region, shard
                 return
+            if region:
+                LOG.warning("Il client dichiara la regione '%s', che Valorant non "
+                            "usa. Serve il log del gioco per saperlo con certezza.",
+                            region)
         raise BridgeError(
             "Regione non rilevata. Entra una volta nel menu di Valorant, oppure "
             "imposta le variabili d'ambiente VALO_REGION e VALO_SHARD."
         )
+
+    async def redetect_region(self) -> bool:
+        prima = (self.region, self.shard)
+        try:
+            await self.detect_region()
+        except BridgeError:
+            return False
+        if (self.region, self.shard) == prima:
+            return False
+        LOG.info("Regione corretta: %s/%s invece di %s/%s",
+                 self.region, self.shard, prima[0] or "?", prima[1] or "?")
+        return True
 
     async def detect_version(self) -> None:
         env_v = os.environ.get("VALO_CLIENT_VERSION", "")
@@ -1360,14 +1390,20 @@ class Tracker:
                     self.state.bridge = "connected"
                     self.state.error = None
                     await self.push()
-            try:
-                await self.refresh_rank()
-                await self.refresh_matches()
-                self.state.error = None
-            except Exception as exc:
-                LOG.warning("Aggiornamento statistiche fallito: %s", exc)
-                self.state.error = f"Statistiche non aggiornate: {exc}"
-                self.state.error_en = f"Stats not refreshed: {exc}"
+            for tentativo in (1, 2):
+                try:
+                    await self.refresh_rank()
+                    await self.refresh_matches()
+                    self.state.error = None
+                    break
+                except Exception as exc:
+                    if tentativo == 1 and await self.riot.redetect_region():
+                        self.state.account["region"] = self.riot.region
+                        continue
+                    LOG.warning("Aggiornamento statistiche fallito: %s", exc)
+                    self.state.error = f"Statistiche non aggiornate: {exc}"
+                    self.state.error_en = f"Stats not refreshed: {exc}"
+                    break
             await self.push()
             with contextlib.suppress(Exception):
                 await self.refresh_roster(force=True)
