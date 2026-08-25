@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="56">
+<meta name="valo-ui" content="57">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -319,6 +319,10 @@ table.maps:not(.acts){table-layout:fixed}
 .maps td.w.has{color:var(--win)}
 .maps td.ls{color:var(--muted)}
 
+body.offline .top{border-bottom-color:var(--signal)}
+body.offline #statePill{border-color:var(--signal);color:var(--signal)}
+body.offline #statePill .dot{background:var(--signal)}
+body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:var(--signal)}
 .foot{margin-top:26px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--dim);line-height:1.9}
 .foot a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
 .foot a:hover{color:var(--signal);border-bottom-color:currentColor}
@@ -849,15 +853,46 @@ const cellText = (k, v, sub) =>
 
 let ws = null, gotState = false;
 
+let riconnessione = null;
+
+function segnaCollegamento() {
+  const giu = !ws || ws.readyState !== 1;
+  document.body.classList.toggle("offline", giu && gotState);
+}
+
 function connect() {
+  if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
   ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onmessage = (ev) => { gotState = true; render(JSON.parse(ev.data)); };
-  ws.onclose = () => setTimeout(connect, 3000);
+  ws.onopen = () => { clearTimeout(riconnessione); segnaCollegamento(); };
+  ws.onmessage = (ev) => {
+    gotState = true;
+    render(JSON.parse(ev.data));
+    segnaCollegamento();
+  };
+  ws.onclose = () => {
+    segnaCollegamento();
+    clearTimeout(riconnessione);
+    riconnessione = setTimeout(connect, 3000);
+  };
   ws.onerror = () => {};
 }
 
-$("refresh").addEventListener("click", () => {
-  if (ws && ws.readyState === 1) ws.send("refresh");
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) { clearTimeout(riconnessione); connect(); }
+});
+window.addEventListener("focus", () => { clearTimeout(riconnessione); connect(); });
+window.addEventListener("online", () => { clearTimeout(riconnessione); connect(); });
+setInterval(() => { if (gotState) connect(); }, 10000);
+
+$("refresh").addEventListener("click", async () => {
+  if (ws && ws.readyState === 1) { ws.send("refresh"); return; }
+  connect();
+  try {
+    await fetch("/api/refresh", { method: "POST" });
+    const r = await fetch("/api/state");
+    if (r.ok) { gotState = true; render(await r.json()); }
+  } catch (e) {}
+  segnaCollegamento();
 });
 
 $("langBtn").addEventListener("click", () => setLang(lang === "it" ? "en" : "it"));

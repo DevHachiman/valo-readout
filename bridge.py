@@ -160,7 +160,7 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "56"
+UI_VERSION = "57"
 
 
 def find_index() -> "Path | None":
@@ -1416,7 +1416,15 @@ class Tracker:
         except Exception:
             return False
 
-        loop = data.get("sessionLoopState", "")
+        dentro = data.get("matchPresenceData") or {}
+
+        def campo(nome, default=""):
+            v = data.get(nome)
+            if v in (None, ""):
+                v = dentro.get(nome)
+            return default if v in (None, "") else v
+
+        loop = campo("sessionLoopState")
         if not loop:
             if not self._presence_blind:
                 LOG.info(
@@ -1426,17 +1434,17 @@ class Tracker:
                 self._presence_blind = True
             return False
         self._presence_blind = False
-        queue = data.get("queueId", "")
-        ally = data.get("partyOwnerMatchScoreAllyTeam")
-        enemy = data.get("partyOwnerMatchScoreEnemyTeam")
+        queue = campo("queueId")
+        ally = campo("partyOwnerMatchScoreAllyTeam", None)
+        enemy = campo("partyOwnerMatchScoreEnemyTeam", None)
 
         self.state.live = {
             "loopState": loop,
             "loopLabel": STATE_LABELS.get(loop, loop or "—"),
             "queue": QUEUE_LABELS.get(queue, queue or "—"),
-            "map": self.map_label(data.get("matchMap", "")),
-            "partySize": data.get("partySize"),
-            "provisioning": data.get("provisioningFlow", ""),
+            "map": self.map_label(campo("matchMap")),
+            "partySize": campo("partySize", None),
+            "provisioning": campo("provisioningFlow"),
             "score": [ally, enemy] if loop == "INGAME" else None,
             "roundsPlayed": (ally or 0) + (enemy or 0) if loop == "INGAME" else None,
         }
@@ -1496,11 +1504,12 @@ class Tracker:
         if loop == self._last_loop_state and match_id == self._last_match_id:
             return
 
+        partita_nuova = bool(match_id) and match_id != self._last_match_id
         if loop != self._last_loop_state:
             LOG.info("Stato partita: %s -> %s (via endpoint proprio)",
                      self._last_loop_state or "?", loop)
-        elif match_id:
-            LOG.info("Partita nuova senza passare dai menu: %s", match_id[:8])
+        if partita_nuova:
+            LOG.info("Partita nuova: %s", match_id[:8])
             self.forget_roster()
 
         was = self._last_loop_state
@@ -1554,6 +1563,12 @@ class Tracker:
         if (not force and loop == "INGAME" and match_id == self._roster_match
                 and self._roster_loop == "INGAME"):
             return
+
+        if self._roster_match and match_id != self._roster_match:
+            LOG.info("Partita cambiata (%s -> %s): tolgo la lobby precedente",
+                     self._roster_match[:8], match_id[:8])
+            if self.forget_roster():
+                await self.push()
 
         try:
             found = (await self._pregame_roster(match_id) if loop == "PREGAME"
