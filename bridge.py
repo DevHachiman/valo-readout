@@ -2126,9 +2126,35 @@ def mock_state() -> State:
     return s
 
 
+LOOPBACK = ("127.0.0.1", "localhost", "[::1]", "::1")
+
+
+def origin_allowed(request: web.Request) -> bool:
+    origin = request.headers.get("Origin")
+    if not origin:
+        return True
+    sock = request.transport.get_extra_info("sockname") if request.transport else None
+    porta = sock[1] if sock else None
+    if porta is None:
+        return False
+    return origin.lower() in {f"http://{h}:{porta}" for h in LOOPBACK}
+
+
 def build_app(tracker: Tracker,
               stop: asyncio.Event | None = None) -> web.Application:
     app = web.Application()
+
+    @web.middleware
+    async def solo_da_qui(request: web.Request, handler):
+        if request.path in ("/ws", "/api/quit", "/api/henrik-key",
+                            "/api/refresh") and not origin_allowed(request):
+            LOG.warning("Richiesta a %s rifiutata: arriva da %s",
+                        request.path, request.headers.get("Origin"))
+            return web.json_response({"ok": False, "why": "origine non ammessa"},
+                                     status=403)
+        return await handler(request)
+
+    app.middlewares.append(solo_da_qui)
 
     async def index(_: web.Request) -> web.StreamResponse:
         page = find_index()
