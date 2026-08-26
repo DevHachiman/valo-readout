@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="57">
+<meta name="valo-ui" content="64">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -159,6 +159,43 @@ table.roster{table-layout:fixed;margin-top:2px}
 .roster tbody tr:last-child td{border-bottom:none}
 .roster .ag{width:74px}
 .roster .lv{width:44px}
+.roster .gm{width:52px}
+.roster .cp{width:30px}
+.copybtn{
+  position:relative;
+  width:22px;height:22px;padding:0;cursor:pointer;
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  color:var(--dim);
+  transition:color .15s,border-color .15s;
+}
+.copybtn::before,.copybtn::after{
+  content:"";position:absolute;box-sizing:border-box;
+}
+.copybtn::before{
+  left:4px;top:4px;width:9px;height:9px;
+  border-left:1px solid currentColor;border-top:1px solid currentColor;
+}
+.copybtn::after{
+  left:7px;top:7px;width:9px;height:9px;
+  border:1px solid currentColor;border-radius:1px;
+}
+.copybtn:hover{color:var(--signal);border-color:var(--signal)}
+.copybtn:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.copybtn.fatto{color:var(--win);border-color:var(--win)}
+.copybtn.fatto::before{
+  left:8px;top:4px;width:5px;height:10px;
+  border:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(40deg);
+}
+.copybtn.fatto::after{display:none}
+.copybtn.male{color:var(--rose);border-color:var(--rose)}
+.copybtn.male::before,.copybtn.male::after{
+  left:4px;top:10px;width:12px;height:0;
+  border:0;border-top:2px solid currentColor;border-radius:0;
+}
+.copybtn.male::before{transform:rotate(45deg)}
+.copybtn.male::after{transform:rotate(-45deg)}
+.roster td.gm{color:var(--muted);font-size:11px}
 .roster .k,.roster .s{width:42px}
 .roster .h,.roster .w{width:48px}
 .roster .r{width:190px}
@@ -319,6 +356,11 @@ table.maps:not(.acts){table-layout:fixed}
 .maps td.w.has{color:var(--win)}
 .maps td.ls{color:var(--muted)}
 
+.loadbar{position:fixed;top:0;left:0;right:0;height:2px;background:var(--rule);overflow:hidden;z-index:60}
+.loadbar[hidden]{display:none}
+.loadbar i{display:block;height:100%;width:38%;background:var(--signal);animation:scorri 1.05s ease-in-out infinite}
+@keyframes scorri{0%{transform:translateX(-100%)}100%{transform:translateX(360%)}}
+@media (prefers-reduced-motion:reduce){.loadbar i{animation:none;width:100%;opacity:.6}}
 body.offline .top{border-bottom-color:var(--signal)}
 body.offline #statePill{border-color:var(--signal);color:var(--signal)}
 body.offline #statePill .dot{background:var(--signal)}
@@ -350,6 +392,7 @@ body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:
       </svg>
       <div class="wordmark">valo<span>·</span>readout</div>
     </div>
+    <div class="loadbar" id="loadbar" hidden><i></i></div>
     <div class="pill" id="statePill"><i class="dot"></i><span id="stateText">in attesa</span></div>
     <div class="pill" id="modePill" hidden><span id="modeText"></span></div>
     <div class="pill" id="mapPill" hidden><span id="mapText"></span></div>
@@ -465,6 +508,8 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    compGames:"comp", compGamesHint:"competitive giocate in questo act",
+    copyHint:"copia i dati del giocatore",
     map:"mappa", colK:"k", colD:"d", colA:"a", colRR:"rr",
     winPct:"v %", colW:"v", colL:"s",
     kda:"kda", kdCell:"k / d", acsCell:"acs medio", hsCell:"headshot",
@@ -506,6 +551,8 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    compGames:"comp", compGamesHint:"competitive games played this act",
+    copyHint:"copy this player's numbers",
     map:"map", colK:"k", colD:"d", colA:"a", colRR:"rr",
     winPct:"win %", colW:"w", colL:"l",
     kda:"kda", kdCell:"k / d", acsCell:"avg acs", hsCell:"headshot",
@@ -590,6 +637,7 @@ function render(s) {
   };
   chip("modePill", "modeText", (s.roster || {}).queue || live.queue);
   chip("mapPill", "mapText", (s.roster || {}).map || live.map);
+  mostraCarico(!!s.refreshing);
   const lato = (s.roster || {}).side;
   chip("sidePill", "sideText", lato ? t(lato === "attacco" ? "atk" : "def") : "");
   $("sidePill").classList.toggle("atk", lato === "attacco");
@@ -731,9 +779,11 @@ const teamCol = (title, rows) => `<div class="team">
       <thead><tr>
         <th class="l ag">${t("agent")}</th><th class="l nm">${t("name")}</th>
         <th class="lv">${t("lvl")}</th>
+        <th class="gm" title="${t("compGamesHint")}">${t("compGames")}</th>
         <th class="k">${t("kd")}</th><th class="s">${t("acs")}</th>
         <th class="h">${t("hs")}</th><th class="w">${t("wr")}</th>
         <th class="r">${t("rank")}</th><th class="pk">${t("peak")}</th>
+        <th class="cp"></th>
       </tr></thead>
       <tbody>${rows.map(playerRow).join("")}</tbody>
     </table>
@@ -770,6 +820,46 @@ const trackerUrl = (name) =>
   "https://tracker.gg/valorant/profile/riot/"
   + encodeURIComponent(name.replace("#", "#")) + "/overview";
 
+function testoCopia(p) {
+  const nome = p.peakTierName && p.peakTierName !== "—" ? p.peakTierName : "—";
+  const conRR = p.peakTier != null && p.peakTier >= 24
+    && p.tier === p.peakTier && p.rr != null;
+  const peak = nome + (conRR ? ` (${p.rr} RR)` : "");
+  const s = p.stats || {};
+  const hs = s.hs == null ? "—" : Math.round(s.hs) + "%";
+  const kd = s.kd == null ? "—" : dec(s.kd);
+  const wr = s.winRate == null ? "—" : s.winRate + "%";
+  const acs = s.acs == null ? "—" : s.acs;
+  const chi = !p.incognito && p.name ? `${p.name}, ` : "";
+  return `${chi}PEAK: ${peak}, HS: ${hs}, KD: ${kd}, WINRATE: ${wr}, ACS: ${acs}`;
+}
+
+async function copiaTesto(testo) {
+  try {
+    await navigator.clipboard.writeText(testo);
+    return true;
+  } catch (e) {}
+  try {
+    const a = document.createElement("textarea");
+    a.value = testo;
+    a.style.position = "fixed";
+    a.style.opacity = "0";
+    document.body.appendChild(a);
+    a.select();
+    const ok = document.execCommand("copy");
+    a.remove();
+    return ok;
+  } catch (e) { return false; }
+}
+
+document.addEventListener("click", async (ev) => {
+  const b = ev.target.closest(".copybtn");
+  if (!b) return;
+  const ok = await copiaTesto(b.dataset.copia || "");
+  b.classList.add(ok ? "fatto" : "male");
+  setTimeout(() => b.classList.remove("fatto", "male"), 1200);
+});
+
 function playerRow(p) {
   const name = p.incognito ? t("anon") : (p.name || "—");
   const cls = (p.me ? " me" : "") + (p.locked === false ? " soft" : "");
@@ -782,12 +872,15 @@ function playerRow(p) {
       <td class="ag l">${esc(p.agent)}</td>
       <td class="nm l">${shown}</td>
       <td class="lv">${esc(lvl)}</td>
+      <td class="gm">${p.actGames == null ? "·" : (p.actGames || "—")}</td>
       ${stat(p, s => dec(s.kd))}
       ${stat(p, s => s.acs)}
       ${stat(p, s => s.hs == null ? null : s.hs + "%")}
       ${stat(p, s => s.winRate == null ? null : s.winRate + "%")}
       <td class="r${p.stale ? " stale" : ""}">${rankChip(p.tier, p.tierName, "", p.rr)}</td>
       <td class="pk">${rankChip(p.peakTier, p.peakTierName, p.peakAct)}</td>
+      <td class="cp"><button class="copybtn" type="button"
+        title="${esc(t("copyHint"))}" data-copia="${esc(testoCopia(p))}"></button></td>
     </tr>`;
 }
 
@@ -884,7 +977,23 @@ window.addEventListener("focus", () => { clearTimeout(riconnessione); connect();
 window.addEventListener("online", () => { clearTimeout(riconnessione); connect(); });
 setInterval(() => { if (gotState) connect(); }, 10000);
 
+let caricoDa = 0, caricoSpegni = null, caricoLimite = null;
+
+function mostraCarico(acceso) {
+  const barra = $("loadbar");
+  clearTimeout(caricoSpegni);
+  if (acceso) {
+    if (barra.hidden) { caricoDa = Date.now(); barra.hidden = false; }
+    return;
+  }
+  const resta = 450 - (Date.now() - caricoDa);
+  caricoSpegni = setTimeout(() => { barra.hidden = true; }, Math.max(0, resta));
+}
+
 $("refresh").addEventListener("click", async () => {
+  mostraCarico(true);
+  clearTimeout(caricoLimite);
+  caricoLimite = setTimeout(() => mostraCarico(false), 25000);
   if (ws && ws.readyState === 1) { ws.send("refresh"); return; }
   connect();
   try {
@@ -1033,6 +1142,7 @@ function demo() {
       tier, tierName: TIERS[tier] || "—", stale: false,
       level: ri(40, 380),
       peakTier: peak, peakTierName: TIERS[peak] || "—",
+      actGames: ri(0, 180),
       peakAct: pick(["V26 // ACT II", "V25 // ACT VI", "EPISODE 9 // ACT III"]),
       stats: { games: 3, kda: +(rnd() * 1.3 + 0.8).toFixed(2),
                acs: ri(150, 320), winRate: ri(0, 3) * 33 },

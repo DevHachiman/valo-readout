@@ -160,7 +160,7 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "57"
+UI_VERSION = "64"
 
 
 def find_index() -> "Path | None":
@@ -250,6 +250,11 @@ ROW_CACHE_VERSION = 3
 
 FFA_QUEUES = {"deathmatch"}
 
+ROUNDS_PER_HALF = {
+    "competitive": 12, "unrated": 12, "premier": 12, "": 12,
+    "swiftplay": 4, "spikerush": 3, "onefa": 4,
+}
+
 STATE_LABELS = {
     "MENUS": "Nei menu",
     "PREGAME": "Agent select",
@@ -290,15 +295,19 @@ def short_error(exc: BaseException) -> str:
     return re.sub(r"\s*ssl:<[^>]*>", "", text).strip() or type(exc).__name__
 
 
-def side_label(team: str, rounds_played: int | None) -> str:
+def side_label(team: str, rounds_played: int | None,
+               queue: str = "competitive") -> str:
     if not team:
         return ""
     parte = "attacco" if str(team).lower() == "red" else "difesa"
+    meta = ROUNDS_PER_HALF.get(str(queue).lower())
+    if meta is None:
+        return ""
     if rounds_played is None:
         return parte
-    if rounds_played >= 24:
+    if meta == 12 and rounds_played >= 24:
         return ""
-    if rounds_played >= 12:
+    if rounds_played >= meta:
         parte = "difesa" if parte == "attacco" else "attacco"
     return parte
 
@@ -722,6 +731,7 @@ class State:
     roster: dict[str, Any] = field(default_factory=dict)
     rank: dict[str, Any] = field(default_factory=dict)
     recent: dict[str, Any] = field(default_factory=dict)
+    refreshing: bool = False
     matches: list[dict[str, Any]] = field(default_factory=list)
     acts: list[dict[str, Any]] = field(default_factory=list)
     updated_at: float = 0.0
@@ -739,6 +749,7 @@ class State:
             "roster": self.roster,
             "rank": self.rank,
             "recent": self.recent,
+            "refreshing": self.refreshing,
             "matches": self.matches,
             "acts": self.acts,
             "updatedAt": self.updated_at,
@@ -801,7 +812,20 @@ class Tracker:
         self._peek_task: asyncio.Task[None] | None = None
 
 
+    def aggiorna_lato(self) -> bool:
+        squadra = (self.state.roster or {}).get("myTeam")
+        if not squadra:
+            return False
+        giocati = (self.state.live or {}).get("roundsPlayed")
+        atteso = side_label(squadra, giocati,
+                            (self.state.roster or {}).get("queueId", ""))
+        if atteso and atteso != self.state.roster.get("side"):
+            self.state.roster["side"] = atteso
+            return True
+        return False
+
     async def push(self) -> None:
+        self.aggiorna_lato()
         self.state.updated_at = time.time()
         payload = json.dumps(self.state.to_json())
         dead = []
@@ -1385,6 +1409,8 @@ class Tracker:
                 LOG.info("Aggiorno statistiche (%s)", reason)
             else:
                 LOG.info("Aggiorno statistiche")
+            self.state.refreshing = True
+            await self.push()
             with contextlib.suppress(Exception):
                 if await self.resync_identity():
                     self.state.bridge = "connected"
@@ -1407,6 +1433,8 @@ class Tracker:
             await self.push()
             with contextlib.suppress(Exception):
                 await self.refresh_roster(force=True)
+            self.state.refreshing = False
+            await self.push()
 
 
     def _apply_presence(self, private_b64: str) -> bool:
@@ -1438,6 +1466,7 @@ class Tracker:
         ally = campo("partyOwnerMatchScoreAllyTeam", None)
         enemy = campo("partyOwnerMatchScoreEnemyTeam", None)
 
+        prima = self.state.live or {}
         self.state.live = {
             "loopState": loop,
             "loopLabel": STATE_LABELS.get(loop, loop or "—"),
@@ -1450,7 +1479,10 @@ class Tracker:
         }
 
         changed = loop != self._last_loop_state
-        if changed:
+        if prima.get("roundsPlayed") != self.state.live.get("roundsPlayed"):
+            self.aggiorna_lato()
+            changed = True
+        if loop != self._last_loop_state:
             LOG.info("Stato partita: %s -> %s", self._last_loop_state or "?", loop)
             if loop == "MENUS" and self._last_loop_state in ("INGAME", "PREGAME"):
                 self.forget_roster()
@@ -1631,7 +1663,9 @@ class Tracker:
             "queue": QUEUE_LABELS.get(queue, queue or "—"),
             "queueId": queue,
             "ffa": queue in FFA_QUEUES,
-            "side": "" if queue in FFA_QUEUES else side_label(my_team, giocati),
+            "myTeam": "" if queue in FFA_QUEUES else my_team,
+            "side": ("" if queue in FFA_QUEUES
+                     else side_label(my_team, giocati, queue)),
             "enemiesHidden": False,
         }
 
@@ -1655,7 +1689,7 @@ class Tracker:
             "queueId": queue,
             "ffa": ffa,
             "side": "" if ffa else side_label(
-                (det.get("AllyTeam") or {}).get("TeamID", ""), None),
+                (det.get("AllyTeam") or {}).get("TeamID", ""), None, queue),
             "enemiesHidden": not ffa,
         }
 
@@ -1703,6 +1737,7 @@ class Tracker:
             p["peakTier"] = peak
             p["peakTierName"] = tier_name(peak) if peak else "—"
             p["peakAct"] = info.get("peakAct", "")
+            p["actGames"] = info.get("actGames")
             p["stats"] = self._pstats.get(p["puuid"]) if self.peek else {}
 
     async def _load_names(self, puuids: list[str]) -> None:
@@ -2099,6 +2134,7 @@ def mock_state() -> State:
             "name": name, "tier": tier, "tierName": tier_name(tier),
             "rr": rng.randint(0, 99), "stale": False,
             "peakTier": peak, "peakTierName": tier_name(peak),
+            "actGames": rng.randint(0, 180),
             "peakAct": rng.choice(["V26 // ACT II", "V25 // ACT VI",
                                    "EPISODE 9 // ACT III"]),
             "stats": {
