@@ -6,15 +6,20 @@ import base64
 import collections
 import contextlib
 import datetime
+import hashlib
 import json
 import logging
 import os
 import random
 import re
+import shutil
 import ssl
+import subprocess
 import sys
+import threading
 import time
 import webbrowser
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -160,7 +165,61 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "64"
+UI_VERSION = "65"
+APP_VERSION = "1.3"
+
+RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
+RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
+NOME_EXE = "valo-readout.exe"
+CONTROLLO_OGNI = 6 * 3600
+
+
+def versione_numeri(testo: str) -> tuple[int, ...]:
+    pezzi = re.findall(r"\d+", str(testo or ""))
+    return tuple(int(x) for x in pezzi[:4]) if pezzi else (0,)
+
+
+def piu_recente(remota: str, locale: str = "") -> bool:
+    return versione_numeri(remota) > versione_numeri(locale or APP_VERSION)
+
+
+def exe_corrente() -> "Path | None":
+    if not getattr(sys, "frozen", False):
+        return None
+    with contextlib.suppress(Exception):
+        return Path(sys.executable).resolve()
+    return None
+
+
+def file_vecchio(exe: "Path") -> "Path":
+    return exe.with_name(exe.stem + ".vecchio")
+
+
+def butta_il_vecchio(exe: "Path | None", tentativi: int = 1) -> None:
+    if exe is None:
+        return
+    avanzo = file_vecchio(exe)
+    for _ in range(max(1, tentativi)):
+        if not avanzo.exists():
+            return
+        try:
+            avanzo.unlink()
+            return
+        except OSError:
+            time.sleep(0.5)
+
+
+def ambiente_pulito() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items()
+            if not k.upper().startswith(("_MEI", "_PYI"))}
+
+
+def pulisci_in_sottofondo() -> None:
+    exe = exe_corrente()
+    if exe is None or not file_vecchio(exe).exists():
+        return
+    threading.Thread(target=butta_il_vecchio, args=(exe, 20),
+                     daemon=True).start()
 
 
 def find_index() -> "Path | None":
@@ -732,6 +791,7 @@ class State:
     rank: dict[str, Any] = field(default_factory=dict)
     recent: dict[str, Any] = field(default_factory=dict)
     refreshing: bool = False
+    update: dict[str, Any] = field(default_factory=dict)
     matches: list[dict[str, Any]] = field(default_factory=list)
     acts: list[dict[str, Any]] = field(default_factory=list)
     updated_at: float = 0.0
@@ -750,6 +810,8 @@ class State:
             "rank": self.rank,
             "recent": self.recent,
             "refreshing": self.refreshing,
+            "update": self.update,
+            "appVersion": APP_VERSION,
             "matches": self.matches,
             "acts": self.acts,
             "updatedAt": self.updated_at,
@@ -810,7 +872,189 @@ class Tracker:
         self._peek_cooldown = 0.0
         self._peek_429 = 0
         self._peek_task: asyncio.Task[None] | None = None
+        self.porta = 7890
+        self.rilancia: list[str] = []
+        self._agg_lock = asyncio.Lock()
 
+
+    async def cerca_aggiornamento(self) -> None:
+        while True:
+            with contextlib.suppress(asyncio.CancelledError):
+                try:
+                    await self._chiedi_release()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    LOG.debug("Controllo aggiornamenti non riuscito: %s",
+                              short_error(exc))
+            await asyncio.sleep(CONTROLLO_OGNI)
+
+    async def _chiedi_release(self) -> None:
+        timeout = aiohttp.ClientTimeout(total=20)
+        intestazioni = {"Accept": "application/vnd.github+json",
+                        "User-Agent": f"valo-readout/{APP_VERSION}"}
+        conn = aiohttp.TCPConnector(ssl=remote_ssl())
+        async with aiohttp.ClientSession(timeout=timeout, connector=conn,
+                                         headers=intestazioni) as s:
+            async with s.get(RELEASE_API) as r:
+                if r.status != 200:
+                    LOG.debug("GitHub ha risposto %s al controllo versione", r.status)
+                    return
+                dati = await r.json(content_type=None)
+        tag = str(dati.get("tag_name") or "")
+        if not tag or not piu_recente(tag):
+            return
+        zip_url = ""
+        peso = 0
+        for a in dati.get("assets") or []:
+            if str(a.get("name", "")).lower().endswith(".zip"):
+                zip_url = a.get("browser_download_url") or ""
+                peso = int(a.get("size") or 0)
+                break
+        corpo = str(dati.get("body") or "")
+        impronta = ""
+        m = re.search(r"valo-readout\.zip\s+SHA-256\s+([0-9A-Fa-f]{64})", corpo)
+        if m:
+            impronta = m.group(1).upper()
+        prima = dict(self.state.update or {})
+        self.state.update = {
+            "version": tag.lstrip("vV"),
+            "have": APP_VERSION,
+            "page": dati.get("html_url") or RELEASE_PAGE,
+            "zip": zip_url,
+            "size": peso,
+            "sha": impronta,
+            "canInstall": bool(zip_url) and exe_corrente() is not None,
+            "state": prima.get("state") or "disponibile",
+            "perc": prima.get("perc") or 0,
+            "why": prima.get("why") or "",
+        }
+        if prima.get("version") != self.state.update["version"]:
+            LOG.info("Disponibile la versione %s (hai la %s)",
+                     self.state.update["version"], APP_VERSION)
+        await self.push()
+
+    async def _segna(self, stato: str, perc: int = 0, why: str = "") -> None:
+        self.state.update["state"] = stato
+        self.state.update["perc"] = perc
+        self.state.update["why"] = why
+        await self.push()
+
+    async def installa_aggiornamento(self, stop: asyncio.Event) -> None:
+        if self._agg_lock.locked():
+            return
+        async with self._agg_lock:
+            try:
+                await self._installa(stop)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                LOG.warning("Aggiornamento non riuscito: %s", short_error(exc))
+                await self._segna("errore", 0, short_error(exc))
+
+    async def _installa(self, stop: asyncio.Event) -> None:
+        info = self.state.update or {}
+        exe = exe_corrente()
+        if exe is None:
+            await self._segna("errore", 0, "sorgenti")
+            return
+        indirizzo = info.get("zip") or ""
+        if not indirizzo.startswith("https://"):
+            await self._segna("errore", 0, "indirizzo")
+            return
+
+        cartella = exe.parent
+        assaggio = cartella / "valo-readout.prova"
+        try:
+            assaggio.write_bytes(b"")
+            assaggio.unlink()
+        except OSError:
+            await self._segna("errore", 0, "protetta")
+            return
+
+        await self._segna("scarico", 0)
+        temporaneo = cartella / "valo-readout.scarico"
+        peso = int(info.get("size") or 0)
+        preso = 0
+        ultimo = 0.0
+        sha = hashlib.sha256()
+        timeout = aiohttp.ClientTimeout(total=900, sock_read=120)
+        conn = aiohttp.TCPConnector(ssl=remote_ssl())
+        intestazioni = {"User-Agent": f"valo-readout/{APP_VERSION}"}
+        with contextlib.suppress(FileNotFoundError):
+            temporaneo.unlink()
+        async with aiohttp.ClientSession(timeout=timeout, connector=conn,
+                                         headers=intestazioni) as s:
+            async with s.get(indirizzo) as r:
+                if r.status != 200:
+                    await self._segna("errore", 0, f"github {r.status}")
+                    return
+                if not peso:
+                    peso = int(r.headers.get("Content-Length") or 0)
+                with open(temporaneo, "wb") as f:
+                    async for pezzo in r.content.iter_chunked(65536):
+                        f.write(pezzo)
+                        sha.update(pezzo)
+                        preso += len(pezzo)
+                        if peso and time.time() - ultimo > 0.4:
+                            ultimo = time.time()
+                            await self._segna("scarico",
+                                              min(99, int(preso * 100 / peso)))
+
+        if peso and preso != peso:
+            temporaneo.unlink(missing_ok=True)
+            await self._segna("errore", 0, "meta")
+            return
+        atteso = str(info.get("sha") or "")
+        if atteso and sha.hexdigest().upper() != atteso:
+            temporaneo.unlink(missing_ok=True)
+            await self._segna("errore", 0, "impronta")
+            return
+
+        await self._segna("installo", 100)
+        nuovo = cartella / "valo-readout.nuovo"
+        with contextlib.suppress(FileNotFoundError):
+            nuovo.unlink()
+        try:
+            with zipfile.ZipFile(temporaneo) as z:
+                dentro = [n for n in z.namelist()
+                          if n.lower().rsplit("/", 1)[-1] == NOME_EXE
+                          and "/" not in n.strip("/")]
+                if not dentro:
+                    raise BridgeError("lo zip non contiene l'eseguibile",
+                                      "the zip has no executable")
+                with z.open(dentro[0]) as src, open(nuovo, "wb") as dst:
+                    shutil.copyfileobj(src, dst, 1024 * 256)
+        finally:
+            temporaneo.unlink(missing_ok=True)
+
+        if nuovo.stat().st_size < 1_000_000:
+            nuovo.unlink(missing_ok=True)
+            await self._segna("errore", 0, "piccolo")
+            return
+
+        avanzo = file_vecchio(exe)
+        butta_il_vecchio(exe, tentativi=4)
+        try:
+            exe.rename(avanzo)
+        except OSError:
+            nuovo.unlink(missing_ok=True)
+            await self._segna("errore", 0, "protetta")
+            return
+        try:
+            nuovo.rename(exe)
+        except OSError:
+            with contextlib.suppress(OSError):
+                avanzo.rename(exe)
+            nuovo.unlink(missing_ok=True)
+            await self._segna("errore", 0, "protetta")
+            return
+
+        LOG.info("Aggiornato alla versione %s, riavvio.",
+                 info.get("version") or "nuova")
+        await self._segna("riavvio", 100)
+        self.rilancia = [str(exe), "--port", str(self.porta), "--no-browser"]
+        asyncio.get_running_loop().call_later(0.8, stop.set)
 
     def aggiorna_lato(self) -> bool:
         squadra = (self.state.roster or {}).get("myTeam")
@@ -2198,7 +2442,8 @@ def build_app(tracker: Tracker,
     @web.middleware
     async def solo_da_qui(request: web.Request, handler):
         if request.path in ("/ws", "/api/quit", "/api/henrik-key",
-                            "/api/refresh") and not origin_allowed(request):
+                            "/api/refresh",
+                            "/api/update") and not origin_allowed(request):
             LOG.warning("Richiesta a %s rifiutata: arriva da %s",
                         request.path, request.headers.get("Origin"))
             return web.json_response({"ok": False, "why": "origine non ammessa"},
@@ -2256,6 +2501,16 @@ def build_app(tracker: Tracker,
         return web.json_response({"ok": False, "why": "richiesta illeggibile",
                                   "whyEn": "unreadable request"}, status=400)
 
+    async def api_update(_: web.Request) -> web.StreamResponse:
+        info = tracker.state.update or {}
+        if info.get("state") in ("scarico", "installo", "riavvio"):
+            return web.json_response({"ok": False, "why": "gia in corso"}, status=409)
+        if not info.get("canInstall"):
+            return web.json_response({"ok": False, "why": "non installabile"},
+                                     status=400)
+        asyncio.create_task(tracker.installa_aggiornamento(stop))
+        return web.json_response({"ok": True})
+
     async def api_quit(_: web.Request) -> web.StreamResponse:
         LOG.info("Chiusura richiesta dal dashboard.")
         if stop is not None:
@@ -2263,6 +2518,7 @@ def build_app(tracker: Tracker,
         return web.json_response({"ok": True})
 
     app.router.add_post("/api/quit", api_quit)
+    app.router.add_post("/api/update", api_update)
     app.router.add_post("/api/henrik-key", api_henrik_key)
     app.router.add_get("/", index)
     app.router.add_get("/api/state", api_state)
@@ -2331,6 +2587,7 @@ async def run(port: int, mock: bool, history: int, open_browser: bool,
     async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
         riot = RiotClient(session)
         tracker = Tracker(riot, history_size=history, peek=peek)
+        tracker.porta = port
 
         if mock:
             tracker.state = mock_state()
@@ -2412,6 +2669,8 @@ async def run(port: int, mock: bool, history: int, open_browser: bool,
                         LOG.debug("Aggancio non riuscito: %s", short_error(exc))
                 await asyncio.sleep(10)
 
+        tasks.append(asyncio.create_task(tracker.cerca_aggiornamento()))
+
         if not mock:
             tasks.append(asyncio.create_task(boot()))
 
@@ -2422,6 +2681,13 @@ async def run(port: int, mock: bool, history: int, open_browser: bool,
                 t.cancel()
             await runner.cleanup()
             clear_instance_lock(port)
+            if tracker.rilancia:
+                with contextlib.suppress(OSError):
+                    subprocess.Popen(
+                        tracker.rilancia,
+                        cwd=str(Path(tracker.rilancia[0]).parent),
+                        env=ambiente_pulito(), close_fds=True,
+                        creationflags=0x00000008 | 0x08000000)
 
 
 async def diagnose() -> None:
@@ -2570,6 +2836,8 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
     logging.getLogger().addHandler(UILogHandler())
+
+    pulisci_in_sottofondo()
 
     if args.diag:
         asyncio.run(diagnose())

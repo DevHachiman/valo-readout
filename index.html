@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="64">
+<meta name="valo-ui" content="65">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -283,6 +283,27 @@ td.rr.down{color:var(--rose)}
 .scroll table{min-width:430px}
 .empty{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
 
+#updCard{
+  margin:auto;
+  max-width:520px;width:calc(100% - 48px);
+  background:var(--panel);color:var(--ivory);
+  border:1px solid var(--rule);border-radius:2px;
+  padding:22px 24px 24px;
+}
+#updCard::backdrop{background:rgba(6,10,12,.74)}
+.updnote{
+  font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--muted);
+  margin-bottom:16px;max-width:56ch;
+}
+.updnote b{color:var(--ivory);font-weight:600}
+.updnote a{color:var(--signal)}
+.updrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.updbar{
+  height:4px;background:var(--panel-2);margin-bottom:14px;overflow:hidden;
+}
+.updbar[hidden]{display:none}
+.updbar i{display:block;height:100%;width:0;background:var(--signal);
+  transition:width .3s ease}
 #keyCard{
   margin:auto;
   max-width:600px;width:calc(100% - 48px);
@@ -474,6 +495,21 @@ body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:
   <p class="foot"><span id="stamp">—</span> · <span id="appver"></span></p>
 </div>
 
+<dialog id="updCard">
+  <div class="dlghead">
+    <h2 data-i18n="updTitle">Aggiornamento</h2>
+    <button class="xbtn" type="button" id="updClose"></button>
+  </div>
+  <p class="updnote" id="updNote"></p>
+  <div class="updbar" id="updBar" hidden><i></i></div>
+  <div class="updrow">
+    <button class="act" id="updGo"></button>
+    <button class="act" id="updLater" data-i18n="updLater">piu' tardi</button>
+    <a class="act" id="updPage" target="_blank" rel="noopener"
+       style="text-decoration:none;line-height:2.4" hidden></a>
+  </div>
+</dialog>
+
 <dialog id="keyCard">
   <div class="dlghead">
     <h2 data-i18n="keyTitle">Api key</h2>
@@ -508,6 +544,18 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    updTitle:"Aggiornamento", updLater:"piu' tardi",
+    updNew:"E' uscita la versione <b>{n}</b>. Tu hai la <b>{v}</b>.",
+    updDo:"aggiorna ora", updGetting:"scarico...", updSetting:"installo...",
+    updRestart:"riavvio...", updOpen:"apri la pagina",
+    updManual:"Stai usando i sorgenti, quindi l'aggiornamento automatico non "
+      + "vale: scarica la versione nuova da GitHub.",
+    updFail:"Non sono riuscito ad aggiornare ({w}). Puoi scaricarla a mano.",
+    updBusy:"Sto aggiornando. Non chiudere la finestra.",
+    updWhy:{protetta:"la cartella e' protetta in scrittura",
+      meta:"lo scaricamento si e' interrotto", impronta:"il file non corrisponde",
+      piccolo:"il file scaricato non e' valido", indirizzo:"manca il link",
+      sorgenti:"stai usando i sorgenti"},
     compGames:"comp", compGamesHint:"competitive giocate in questo act",
     copyHint:"copia i dati del giocatore",
     map:"mappa", colK:"k", colD:"d", colA:"a", colRR:"rr",
@@ -551,6 +599,18 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    updTitle:"Update", updLater:"later",
+    updNew:"Version <b>{n}</b> is out. You have <b>{v}</b>.",
+    updDo:"update now", updGetting:"downloading...", updSetting:"installing...",
+    updRestart:"restarting...", updOpen:"open the page",
+    updManual:"You are running from source, so the built-in update does not "
+      + "apply: download the new version from GitHub.",
+    updFail:"The update did not go through ({w}). You can download it by hand.",
+    updBusy:"Updating. Do not close this window.",
+    updWhy:{protetta:"the folder is write protected",
+      meta:"the download stopped halfway", impronta:"the file does not match",
+      piccolo:"the downloaded file is not valid", indirizzo:"no download link",
+      sorgenti:"you are running from source"},
     compGames:"comp", compGamesHint:"competitive games played this act",
     copyHint:"copy this player's numbers",
     map:"map", colK:"k", colD:"d", colA:"a", colRR:"rr",
@@ -638,6 +698,8 @@ function render(s) {
   chip("modePill", "modeText", (s.roster || {}).queue || live.queue);
   chip("mapPill", "mapText", (s.roster || {}).map || live.map);
   mostraCarico(!!s.refreshing);
+  mostraAggiornamento(s.update || {}, s.appVersion || "");
+  mostraVersione(s.appVersion || "");
   const lato = (s.roster || {}).side;
   chip("sidePill", "sideText", lato ? t(lato === "attacco" ? "atk" : "def") : "");
   $("sidePill").classList.toggle("atk", lato === "attacco");
@@ -1021,18 +1083,97 @@ function applyFolds() {
   });
 }
 
-(() => {
-  const meta = document.querySelector('meta[name="valo-ui"]');
+let updScartata = "";
+
+function mostraAggiornamento(u, mia) {
+  const dlg = $("updCard");
+  const c = u.version || "";
+  if (!c || u.state === "" || u.state === undefined) {
+    if (dlg.open) dlg.close();
+    return;
+  }
+  const lavora = u.state === "scarico" || u.state === "installo"
+    || u.state === "riavvio";
+  if (!lavora && updScartata === c) {
+    if (dlg.open) dlg.close();
+    return;
+  }
+  const nota = $("updNote"), go = $("updGo"), dopo = $("updLater"),
+        pag = $("updPage"), barra = $("updBar"), croce = $("updClose");
+  croce.hidden = lavora;
+  pag.href = u.page || "https://github.com/DevHachiman/valo-readout/releases";
+  pag.textContent = t("updOpen");
+  if (u.state === "errore") {
+    const tab = t("updWhy") || {};
+    nota.innerHTML = t("updFail").replace("{w}", esc(tab[u.why] || u.why || "?"));
+    go.hidden = true; pag.hidden = false; dopo.hidden = false;
+    barra.hidden = true;
+  } else if (lavora) {
+    nota.innerHTML = t("updBusy");
+    go.hidden = false; go.disabled = true; pag.hidden = true; dopo.hidden = true;
+    go.textContent = t(u.state === "scarico" ? "updGetting"
+      : u.state === "installo" ? "updSetting" : "updRestart");
+    barra.hidden = false;
+    barra.firstElementChild.style.width = (u.perc || 0) + "%";
+  } else {
+    nota.innerHTML = u.canInstall
+      ? t("updNew").replace("{n}", esc(c)).replace("{v}", esc(mia || u.have || "?"))
+      : t("updNew").replace("{n}", esc(c)).replace("{v}", esc(mia || u.have || "?"))
+        + " " + t("updManual");
+    go.hidden = !u.canInstall;
+    go.disabled = false;
+    go.textContent = t("updDo");
+    pag.hidden = !!u.canInstall;
+    dopo.hidden = false;
+    barra.hidden = true;
+  }
+  if (!dlg.open) { dlg.showModal(); updAperta = true; }
+}
+
+$("updGo").addEventListener("click", async () => {
+  $("updGo").disabled = true;
+  try {
+    await fetch("/api/update", { method: "POST" });
+  } catch (e) { $("updGo").disabled = false; }
+});
+
+$("updLater").addEventListener("click", () => {
+  const u = (lastState && lastState.update) || {};
+  updScartata = u.version || "";
+  $("updCard").close();
+});
+
+$("updClose").addEventListener("click", () => {
+  const u = (lastState && lastState.update) || {};
+  if (u.state === "scarico" || u.state === "installo" || u.state === "riavvio") return;
+  updScartata = u.version || "";
+  $("updCard").close();
+});
+
+$("updCard").addEventListener("cancel", (ev) => {
+  const u = (lastState && lastState.update) || {};
+  if (u.state === "scarico" || u.state === "installo" || u.state === "riavvio") {
+    ev.preventDefault();
+    return;
+  }
+  updScartata = u.version || "";
+});
+
+function mostraVersione(v) {
   const box = $("appver");
-  box.textContent =
-    `v${meta ? meta.content : "?"} · © ${new Date().getFullYear()} DevHachiman · `;
+  if (box.dataset.v === String(v)) return;
+  box.dataset.v = String(v);
+  box.textContent = (v ? `v${v} · ` : "")
+    + `© ${new Date().getFullYear()} DevHachiman · `;
   const a = document.createElement("a");
   a.href = "https://github.com/DevHachiman";
   a.target = "_blank";
   a.rel = "noopener";
   a.textContent = "github.com/DevHachiman";
   box.appendChild(a);
-})();
+}
+
+mostraVersione("");
 
 document.querySelectorAll(".foldbtn").forEach((b) => {
   b.addEventListener("click", () => {
