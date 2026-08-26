@@ -552,7 +552,6 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
-    metTitle:"gia' incontrato", metNever:"",
     metTimes:"Gia' incontrato {n} volte", metOnce:"Gia' incontrato una volta",
     metAsAlly:"{n} da alleato", metAsFoe:"{n} da avversario",
     metRecord:"Bilancio {v}V {s}S", metNoRecord:"Esito non registrato",
@@ -616,7 +615,6 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
-    metTitle:"met before", metNever:"",
     metTimes:"Met {n} times before", metOnce:"Met once before",
     metAsAlly:"{n} as teammate", metAsFoe:"{n} as opponent",
     metRecord:"Record {v}W {s}L", metNoRecord:"Result not recorded",
@@ -1181,10 +1179,9 @@ function mostraAggiornamento(u, mia) {
     barra.hidden = false;
     barra.firstElementChild.style.width = (u.perc || 0) + "%";
   } else {
-    nota.innerHTML = u.canInstall
-      ? t("updNew").replace("{n}", esc(c)).replace("{v}", esc(mia || u.have || "?"))
-      : t("updNew").replace("{n}", esc(c)).replace("{v}", esc(mia || u.have || "?"))
-        + " " + t("updManual");
+    const avviso = t("updNew").replace("{n}", esc(c))
+      .replace("{v}", esc(mia || u.have || "?"));
+    nota.innerHTML = u.canInstall ? avviso : avviso + " " + t("updManual");
     go.hidden = !u.canInstall;
     go.disabled = false;
     go.textContent = t("updDo");

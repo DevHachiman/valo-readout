@@ -166,7 +166,7 @@ HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
 UI_VERSION = "66"
-APP_VERSION = "1.4"
+APP_VERSION = "1.5"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -874,6 +874,7 @@ class Tracker:
         self._peek_429 = 0
         self._peek_task: asyncio.Task[None] | None = None
         self.porta = 7890
+        self._lobby_ko = 0
         self.rilancia: list[str] = []
         self._incontri: dict[str, dict[str, Any]] = {}
         self._indice: dict[str, list[dict[str, Any]]] = {}
@@ -1040,15 +1041,11 @@ class Tracker:
         butta_il_vecchio(exe, tentativi=4)
         try:
             exe.rename(avanzo)
-        except OSError:
-            nuovo.unlink(missing_ok=True)
-            await self._segna("errore", 0, "protetta")
-            return
-        try:
             nuovo.rename(exe)
         except OSError:
-            with contextlib.suppress(OSError):
-                avanzo.rename(exe)
+            if not exe.exists() and avanzo.exists():
+                with contextlib.suppress(OSError):
+                    avanzo.rename(exe)
             nuovo.unlink(missing_ok=True)
             await self._segna("errore", 0, "protetta")
             return
@@ -1807,11 +1804,12 @@ class Tracker:
             "roundsPlayed": (ally or 0) + (enemy or 0) if loop == "INGAME" else None,
         }
 
-        changed = loop != self._last_loop_state
+        cambio_fase = loop != self._last_loop_state
+        changed = cambio_fase
         if prima.get("roundsPlayed") != self.state.live.get("roundsPlayed"):
             self.aggiorna_lato()
             changed = True
-        if loop != self._last_loop_state:
+        if cambio_fase:
             LOG.info("Stato partita: %s -> %s", self._last_loop_state or "?", loop)
             if loop == "MENUS" and self._last_loop_state in ("INGAME", "PREGAME"):
                 self.forget_roster()
@@ -1841,14 +1839,15 @@ class Tracker:
 
         puuid = self.riot.puuid
         loop, match_id = "MENUS", ""
-        pre = await self.riot.remote_get(f"{self.riot.glz}/pregame/v1/players/{puuid}")
-        if pre:
-            loop, match_id = "PREGAME", pre.get("MatchID", "")
+        core = await self.riot.remote_get(
+            f"{self.riot.glz}/core-game/v1/players/{puuid}")
+        if core:
+            loop, match_id = "INGAME", core.get("MatchID", "")
         else:
-            core = await self.riot.remote_get(
-                f"{self.riot.glz}/core-game/v1/players/{puuid}")
-            if core:
-                loop, match_id = "INGAME", core.get("MatchID", "")
+            pre = await self.riot.remote_get(
+                f"{self.riot.glz}/pregame/v1/players/{puuid}")
+            if pre:
+                loop, match_id = "PREGAME", pre.get("MatchID", "")
 
         self._match_loop, self._match_id = loop, match_id
         self._match_at = time.time()
@@ -1906,6 +1905,34 @@ class Tracker:
             self._peek_task.cancel()
         self._peek_task = None
         return had
+
+    async def tieni_la_lobby(self) -> None:
+        if self._last_loop_state not in ("INGAME", "PREGAME"):
+            self._lobby_ko = 0
+            return
+        if time.time() - self._roster_at <= 5:
+            return
+        adesso = (self.state.roster or {}).get("loop")
+        try:
+            await self.refresh_roster(force=adesso != self._last_loop_state)
+        except Exception as exc:
+            self._lobby_ko += 1
+            LOG.debug("Lobby non aggiornata: %s", short_error(exc))
+        else:
+            if (self.state.roster or {}).get("loop") == self._last_loop_state:
+                self._lobby_ko = 0
+                return
+            self._lobby_ko += 1
+        if self._lobby_ko == 3:
+            LOG.warning("La lobby resta su %s mentre sono in %s. "
+                        "Riaggancio l'identita' e riprovo.",
+                        (self.state.roster or {}).get("loop") or "niente",
+                        self._last_loop_state)
+        if self._lobby_ko >= 3 and self._lobby_ko % 3 == 0:
+            with contextlib.suppress(Exception):
+                await self.resync_identity()
+            with contextlib.suppress(Exception):
+                await self.refresh_roster(force=True)
 
     async def refresh_roster(self, force: bool = False) -> None:
         self._roster_at = time.time()
@@ -2335,9 +2362,7 @@ class Tracker:
                     absent = 0
                     if self._presence_blind and time.time() - self._glz_at > 5:
                         await self.detect_state_remote()
-                    if (self._last_loop_state in ("INGAME", "PREGAME")
-                            and time.time() - self._roster_at > 5):
-                        await self.refresh_roster()
+                    await self.tieni_la_lobby()
                     if not seen_once:
                         seen_once = True
                         LOG.info("Presenza Valorant agganciata.")
