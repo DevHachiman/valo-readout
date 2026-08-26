@@ -12,12 +12,12 @@ import logging
 import os
 import random
 import re
-import shutil
 import ssl
 import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 import webbrowser
 import zipfile
 from dataclasses import dataclass, field
@@ -165,13 +165,23 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "66"
+UI_VERSION = "67"
 APP_VERSION = "1.5"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
 NOME_EXE = "valo-readout.exe"
 CONTROLLO_OGNI = 6 * 3600
+SCARICO_MAX = 200 * 1024 * 1024
+HOST_AMMESSI = ("github.com", "objects.githubusercontent.com",
+                "release-assets.githubusercontent.com")
+
+
+def da_github(url: str) -> bool:
+    with contextlib.suppress(Exception):
+        pezzi = urllib.parse.urlsplit(url)
+        return pezzi.scheme == "https" and pezzi.hostname in HOST_AMMESSI
+    return False
 
 
 def versione_numeri(testo: str) -> tuple[int, ...]:
@@ -963,7 +973,7 @@ class Tracker:
             await self._segna("errore", 0, "sorgenti")
             return
         indirizzo = info.get("zip") or ""
-        if not indirizzo.startswith("https://"):
+        if not da_github(indirizzo):
             await self._segna("errore", 0, "indirizzo")
             return
 
@@ -995,15 +1005,26 @@ class Tracker:
                     return
                 if not peso:
                     peso = int(r.headers.get("Content-Length") or 0)
+                if peso > SCARICO_MAX:
+                    await self._segna("errore", 0, "grosso")
+                    return
+                troppo = False
                 with open(temporaneo, "wb") as f:
                     async for pezzo in r.content.iter_chunked(65536):
+                        preso += len(pezzo)
+                        if preso > SCARICO_MAX:
+                            troppo = True
+                            break
                         f.write(pezzo)
                         sha.update(pezzo)
-                        preso += len(pezzo)
                         if peso and time.time() - ultimo > 0.4:
                             ultimo = time.time()
                             await self._segna("scarico",
                                               min(99, int(preso * 100 / peso)))
+                if troppo:
+                    temporaneo.unlink(missing_ok=True)
+                    await self._segna("errore", 0, "grosso")
+                    return
 
         if peso and preso != peso:
             temporaneo.unlink(missing_ok=True)
@@ -1027,8 +1048,17 @@ class Tracker:
                 if not dentro:
                     raise BridgeError("lo zip non contiene l'eseguibile",
                                       "the zip has no executable")
+                scritti = 0
                 with z.open(dentro[0]) as src, open(nuovo, "wb") as dst:
-                    shutil.copyfileobj(src, dst, 1024 * 256)
+                    while True:
+                        blocco = src.read(1024 * 256)
+                        if not blocco:
+                            break
+                        scritti += len(blocco)
+                        if scritti > SCARICO_MAX:
+                            raise BridgeError("l'eseguibile nello zip e' enorme",
+                                              "the executable in the zip is huge")
+                        dst.write(blocco)
         finally:
             temporaneo.unlink(missing_ok=True)
 
