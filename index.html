@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="65">
+<meta name="valo-ui" content="66">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -196,6 +196,14 @@ table.roster{table-layout:fixed;margin-top:2px}
 .copybtn.male::before{transform:rotate(45deg)}
 .copybtn.male::after{transform:rotate(-45deg)}
 .roster td.gm{color:var(--muted);font-size:11px}
+.metbadge{
+  display:inline-block;margin-left:6px;padding:0 4px;
+  font-family:var(--mono);font-size:9.5px;line-height:14px;font-weight:500;
+  border:1px solid var(--rule);border-radius:2px;color:var(--muted);
+  vertical-align:1px;cursor:help;
+}
+.metbadge.buono{border-color:var(--win);color:var(--win)}
+.metbadge.brutto{border-color:var(--rose);color:var(--rose)}
 .roster .k,.roster .s{width:42px}
 .roster .h,.roster .w{width:48px}
 .roster .r{width:190px}
@@ -544,6 +552,15 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    metTitle:"gia' incontrato", metNever:"",
+    metTimes:"Gia' incontrato {n} volte", metOnce:"Gia' incontrato una volta",
+    metAsAlly:"{n} da alleato", metAsFoe:"{n} da avversario",
+    metRecord:"Bilancio {v}V {s}S", metNoRecord:"Esito non registrato",
+    metLast:"Ultima volta {q} su {m}, da {c}, {e}",
+    metAlly:"alleato", metFoe:"avversario",
+    metWon:"vinta", metLost:"persa", metUnknown:"esito ignoto",
+    agoToday:"oggi", agoYesterday:"ieri", agoDays:"{n} giorni fa",
+    agoWeeks:"{n} settimane fa", agoMonths:"{n} mesi fa",
     updTitle:"Aggiornamento", updLater:"piu' tardi",
     updNew:"E' uscita la versione <b>{n}</b>. Tu hai la <b>{v}</b>.",
     updDo:"aggiorna ora", updGetting:"scarico...", updSetting:"installo...",
@@ -599,6 +616,15 @@ const I18N = {
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
+    metTitle:"met before", metNever:"",
+    metTimes:"Met {n} times before", metOnce:"Met once before",
+    metAsAlly:"{n} as teammate", metAsFoe:"{n} as opponent",
+    metRecord:"Record {v}W {s}L", metNoRecord:"Result not recorded",
+    metLast:"Last time {q} on {m}, as {c}, {e}",
+    metAlly:"teammate", metFoe:"opponent",
+    metWon:"won", metLost:"lost", metUnknown:"result unknown",
+    agoToday:"today", agoYesterday:"yesterday", agoDays:"{n} days ago",
+    agoWeeks:"{n} weeks ago", agoMonths:"{n} months ago",
     updTitle:"Update", updLater:"later",
     updNew:"Version <b>{n}</b> is out. You have <b>{v}</b>.",
     updDo:"update now", updGetting:"downloading...", updSetting:"installing...",
@@ -882,6 +908,45 @@ const trackerUrl = (name) =>
   "https://tracker.gg/valorant/profile/riot/"
   + encodeURIComponent(name.replace("#", "#")) + "/overview";
 
+function quandoFa(ms) {
+  if (!ms) return "";
+  const giorni = Math.floor((Date.now() - ms) / 86400000);
+  if (giorni <= 0) return t("agoToday");
+  if (giorni === 1) return t("agoYesterday");
+  if (giorni < 14) return t("agoDays").replace("{n}", giorni);
+  if (giorni < 60) return t("agoWeeks").replace("{n}", Math.round(giorni / 7));
+  return t("agoMonths").replace("{n}", Math.round(giorni / 30));
+}
+
+function testoIncontro(m) {
+  const parti = [];
+  parti.push(m.times === 1 ? t("metOnce") : t("metTimes").replace("{n}", m.times));
+  const ruoli = [];
+  if (m.ally) ruoli.push(t("metAsAlly").replace("{n}", m.ally));
+  if (m.enemy) ruoli.push(t("metAsFoe").replace("{n}", m.enemy));
+  let testa = parti[0] + (ruoli.length ? ": " + ruoli.join(", ") : "");
+  const righe = [testa];
+  righe.push(m.won + m.lost > 0
+    ? t("metRecord").replace("{v}", m.won).replace("{s}", m.lost)
+    : t("metNoRecord"));
+  const esito = m.lastWon === true ? t("metWon")
+    : m.lastWon === false ? t("metLost") : t("metUnknown");
+  righe.push(t("metLast")
+    .replace("{q}", quandoFa(m.lastAt))
+    .replace("{m}", m.lastMap || "?")
+    .replace("{c}", m.lastAlly ? t("metAlly") : t("metFoe"))
+    .replace("{e}", esito));
+  return righe.join(". ") + ".";
+}
+
+function targhettaIncontro(p) {
+  const m = p.met;
+  if (!m || !m.times) return "";
+  const cls = m.won > m.lost ? " buono" : m.lost > m.won ? " brutto" : "";
+  return `<span class="metbadge${cls}" title="${esc(testoIncontro(m))}">`
+    + `${m.times}×</span>`;
+}
+
 function testoCopia(p) {
   const nome = p.peakTierName && p.peakTierName !== "—" ? p.peakTierName : "—";
   const conRR = p.peakTier != null && p.peakTier >= 24
@@ -932,7 +997,7 @@ function playerRow(p) {
          title="${esc(t("openOn").replace("{n}", p.name))}">${esc(p.name)}</a>`;
   return `<tr class="${cls.trim()}">
       <td class="ag l">${esc(p.agent)}</td>
-      <td class="nm l">${shown}</td>
+      <td class="nm l">${shown}${targhettaIncontro(p)}</td>
       <td class="lv">${esc(lvl)}</td>
       <td class="gm">${p.actGames == null ? "·" : (p.actGames || "—")}</td>
       ${stat(p, s => dec(s.kd))}

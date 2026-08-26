@@ -165,8 +165,8 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "65"
-APP_VERSION = "1.3"
+UI_VERSION = "66"
+APP_VERSION = "1.4"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -340,6 +340,7 @@ STARTUP_LOG = local_appdata() / "valo-readout" / "bridge.log"
 PEEK_CACHE_FILE = local_appdata() / "valo-readout" / "peeked.json"
 INSTANCE_LOCK = local_appdata() / "valo-readout" / "bridge.lock"
 PEEK_CACHE_MAX = 12000
+INCONTRI_MAX = 4000
 PEEK_ACT = -1
 
 
@@ -874,6 +875,8 @@ class Tracker:
         self._peek_task: asyncio.Task[None] | None = None
         self.porta = 7890
         self.rilancia: list[str] = []
+        self._incontri: dict[str, dict[str, Any]] = {}
+        self._indice: dict[str, list[dict[str, Any]]] = {}
         self._agg_lock = asyncio.Lock()
 
 
@@ -1152,8 +1155,89 @@ class Tracker:
             mio = self._read_row_file().get(self.riot.puuid) or {}
             self._row_cache = mio.get("rows") or {}
             self._act_saved = mio.get("acts") or {}
+            self._incontri = mio.get("met") or {}
+            self._rifai_indice()
             if self._row_cache:
                 LOG.info("Cache partite: %d gia' analizzate", len(self._row_cache))
+            if self._incontri:
+                LOG.info("Incontri salvati: %d partite, %d giocatori",
+                         len(self._incontri), len(self._indice))
+
+    def _rifai_indice(self) -> None:
+        indice: dict[str, list[dict[str, Any]]] = {}
+        for mid, lob in self._incontri.items():
+            for pu, alleato in (lob.get("p") or {}).items():
+                indice.setdefault(pu, []).append({
+                    "matchId": mid,
+                    "at": lob.get("at") or 0,
+                    "map": lob.get("map") or "",
+                    "queue": lob.get("queue") or "",
+                    "ally": bool(alleato),
+                    "won": lob.get("won"),
+                })
+        for v in indice.values():
+            v.sort(key=lambda x: (x["at"], x["matchId"]), reverse=True)
+        self._indice = indice
+
+    def ricorda_lobby(self, match_id: str, players: list[dict[str, Any]],
+                      meta: dict[str, Any]) -> None:
+        if not match_id or not self.riot.puuid:
+            return
+        gente = {p["puuid"]: 1 if p["ally"] else 0
+                 for p in players if p.get("puuid") and not p.get("me")}
+        if not gente:
+            return
+        prima = self._incontri.get(match_id) or {}
+        nuova = {
+            "at": prima.get("at") or int(time.time() * 1000),
+            "map": meta.get("map") or prima.get("map") or "",
+            "queue": meta.get("queueId") or prima.get("queue") or "",
+            "won": prima.get("won"),
+            "p": gente,
+        }
+        if prima == nuova:
+            return
+        self._incontri[match_id] = nuova
+        if len(self._incontri) > INCONTRI_MAX:
+            ordinate = sorted(self._incontri.items(),
+                              key=lambda kv: kv[1].get("at") or 0)
+            for mid, _ in ordinate[:len(self._incontri) - INCONTRI_MAX]:
+                self._incontri.pop(mid, None)
+        self._rifai_indice()
+        self._save_row_cache()
+
+    def _segna_esiti(self) -> None:
+        cambiato = False
+        for mid, lob in self._incontri.items():
+            if lob.get("won") is not None:
+                continue
+            riga = self._row_cache.get(mid)
+            if isinstance(riga, dict) and riga.get("won") is not None:
+                lob["won"] = bool(riga["won"])
+                cambiato = True
+        if cambiato:
+            self._rifai_indice()
+            self._save_row_cache()
+
+    def _visto_prima(self, puuid: str, escluso: str) -> dict[str, Any] | None:
+        storia = [x for x in self._indice.get(puuid, [])
+                  if x["matchId"] != escluso]
+        if not storia:
+            return None
+        vinte = sum(1 for x in storia if x["won"] is True)
+        perse = sum(1 for x in storia if x["won"] is False)
+        ultima = storia[0]
+        return {
+            "times": len(storia),
+            "ally": sum(1 for x in storia if x["ally"]),
+            "enemy": sum(1 for x in storia if not x["ally"]),
+            "won": vinte,
+            "lost": perse,
+            "lastAt": ultima["at"],
+            "lastMap": ultima["map"],
+            "lastAlly": ultima["ally"],
+            "lastWon": ultima["won"],
+        }
 
     def load_peek_cache(self) -> None:
         with contextlib.suppress(Exception):
@@ -1180,7 +1264,8 @@ class Tracker:
             mio = tutti.get(self.riot.puuid) or {}
             acts = dict(mio.get("acts") or {})
             acts.update(self._act_saved)
-            tutti[self.riot.puuid] = {"rows": self._row_cache, "acts": acts}
+            tutti[self.riot.puuid] = {"rows": self._row_cache, "acts": acts,
+                                      "met": self._incontri}
             CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             CACHE_FILE.write_text(
                 json.dumps({"v": ROW_CACHE_VERSION, "accounts": tutti}),
@@ -1855,6 +1940,8 @@ class Tracker:
         if not found:
             return
         players, meta = found
+        with contextlib.suppress(Exception):
+            self.ricorda_lobby(match_id, players, meta)
 
         if match_id != self._roster_match:
             self._tiers.clear()
@@ -1862,7 +1949,7 @@ class Tracker:
             if self._peek_task and not self._peek_task.done():
                 self._peek_task.cancel()
             self._peek_task = None
-        await self._decorate(players)
+        await self._decorate(players, match_id)
 
         allies = [p for p in players if p["ally"]]
         enemies = [p for p in players if not p["ally"]]
@@ -1960,7 +2047,8 @@ class Tracker:
             "stats": None,
         }
 
-    async def _decorate(self, players: list[dict[str, Any]]) -> None:
+    async def _decorate(self, players: list[dict[str, Any]],
+                        escluso: str = "") -> None:
         with contextlib.suppress(Exception):
             await self._load_names([p["puuid"] for p in players])
         for p in players:
@@ -1983,6 +2071,9 @@ class Tracker:
             p["peakAct"] = info.get("peakAct", "")
             p["actGames"] = info.get("actGames")
             p["stats"] = self._pstats.get(p["puuid"]) if self.peek else {}
+        self._segna_esiti()
+        for p in players:
+            p["met"] = None if p["me"] else self._visto_prima(p["puuid"], escluso)
 
     async def _load_names(self, puuids: list[str]) -> None:
         todo = sorted({u for u in puuids if u and u not in self._names})
@@ -2379,6 +2470,19 @@ def mock_state() -> State:
             "rr": rng.randint(0, 99), "stale": False,
             "peakTier": peak, "peakTierName": tier_name(peak),
             "actGames": rng.randint(0, 180),
+            "met": rng.choice([None, None, None, {
+                "times": 1, "ally": 1, "enemy": 0, "won": 1, "lost": 0,
+                "lastAt": int(time.time() * 1000) - 3 * 86400000,
+                "lastMap": "Ascent", "lastAlly": True, "lastWon": True,
+            }, {
+                "times": 4, "ally": 1, "enemy": 3, "won": 1, "lost": 3,
+                "lastAt": int(time.time() * 1000) - 40 * 86400000,
+                "lastMap": "Split", "lastAlly": False, "lastWon": False,
+            }, {
+                "times": 2, "ally": 0, "enemy": 2, "won": 1, "lost": 1,
+                "lastAt": int(time.time() * 1000) - 86400000,
+                "lastMap": "Lotus", "lastAlly": False, "lastWon": None,
+            }]),
             "peakAct": rng.choice(["V26 // ACT II", "V25 // ACT VI",
                                    "EPISODE 9 // ACT III"]),
             "stats": {
