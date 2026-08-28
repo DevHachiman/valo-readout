@@ -165,14 +165,16 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "67"
-APP_VERSION = "1.5"
+UI_VERSION = "71"
+APP_VERSION = "1.6"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
 NOME_EXE = "valo-readout.exe"
 CONTROLLO_OGNI = 6 * 3600
 SCARICO_MAX = 200 * 1024 * 1024
+CODA_INCONTRI = "competitive"
+DETTAGLI_INCONTRI = 8
 HOST_AMMESSI = ("github.com", "objects.githubusercontent.com",
                 "release-assets.githubusercontent.com")
 
@@ -311,6 +313,16 @@ QUEUE_LABELS = {
     "ggteam": "Escalation",
     "hurm": "Team Deathmatch",
     "premier": "Premier",
+    "fortcollins": "Retake",
+    "onefa": "Replication",
+    "dodgeball": "Knockout",
+    "valaram": "All Random One Site",
+    "snowball": "Snowball Fight",
+    "newmap": "Summit",
+    "skirmish2v2": "Skirmish: 2v2",
+    "skirmishascension1v1": "Skirmish: Ascension 1v1",
+    "skirmishascension2v2": "Skirmish: Ascension 2v2",
+    "custom": "Custom Game",
     "": "Custom",
 }
 
@@ -703,7 +715,7 @@ class RiotClient:
         try:
             data = await self.local_get("/entitlements/v1/token")
         except aiohttp.ClientResponseError as exc:
-            if exc.status in (401, 403, 404):
+            if exc.status in (400, 401, 403, 404, 503):
                 raise BridgeError(
                     "Il Riot Client e' aperto ma Valorant no. Avvia Valorant e "
                     "aspetta di essere nel menu principale.") from None
@@ -858,6 +870,7 @@ class Tracker:
         self.clients: set[web.WebSocketResponse] = set()
         self._agents: dict[str, str] = {}
         self._maps: dict[str, str] = {}
+        self._queues: dict[str, str] = {}
         self._seasons: dict[str, str] = {}
         self._episodes: dict[str, str] = {}
         self._active_seasons: set[str] = set()
@@ -872,6 +885,7 @@ class Tracker:
         self._tiers: dict[str, dict[str, Any]] = {}
         self._roster_match = ""
         self._roster_loop = ""
+        self._party_id = ""
         self._roster_at = 0.0
         self._match_id = ""
         self._match_loop = ""
@@ -1127,6 +1141,15 @@ class Tracker:
                 d = await r.json()
                 self._agents = {a["uuid"].lower(): a["displayName"] for a in d["data"]}
         with contextlib.suppress(Exception):
+            async with self.riot.session.get(
+                "https://valorant-api.com/v1/gamemodes/queues"
+            ) as r:
+                d = await r.json()
+                for q in d["data"]:
+                    chiave = str(q.get("queueId") or "").lower()
+                    if chiave and q.get("displayName"):
+                        self._queues[chiave] = q["displayName"]
+        with contextlib.suppress(Exception):
             async with self.riot.session.get("https://valorant-api.com/v1/maps") as r:
                 d = await r.json()
                 for m in d["data"]:
@@ -1182,8 +1205,15 @@ class Tracker:
             mio = self._read_row_file().get(self.riot.puuid) or {}
             self._row_cache = mio.get("rows") or {}
             self._act_saved = mio.get("acts") or {}
-            self._incontri = mio.get("met") or {}
+            tutti_gli_incontri = mio.get("met") or {}
+            self._incontri = {
+                k: v for k, v in tutti_gli_incontri.items()
+                if str(v.get("queue") or "").lower() == CODA_INCONTRI}
+            scartate = len(tutti_gli_incontri) - len(self._incontri)
             self._rifai_indice()
+            if scartate:
+                LOG.info("Tolte %d lobby non ranked dagli incontri", scartate)
+                self._save_row_cache()
             if self._row_cache:
                 LOG.info("Cache partite: %d gia' analizzate", len(self._row_cache))
             if self._incontri:
@@ -1193,6 +1223,8 @@ class Tracker:
     def _rifai_indice(self) -> None:
         indice: dict[str, list[dict[str, Any]]] = {}
         for mid, lob in self._incontri.items():
+            if str(lob.get("queue") or "").lower() != CODA_INCONTRI:
+                continue
             for pu, alleato in (lob.get("p") or {}).items():
                 indice.setdefault(pu, []).append({
                     "matchId": mid,
@@ -1209,6 +1241,9 @@ class Tracker:
     def ricorda_lobby(self, match_id: str, players: list[dict[str, Any]],
                       meta: dict[str, Any]) -> None:
         if not match_id or not self.riot.puuid:
+            return
+        coda = str(meta.get("queueId") or "").lower()
+        if coda != CODA_INCONTRI:
             return
         gente = {p["puuid"]: 1 if p["ally"] else 0
                  for p in players if p.get("puuid") and not p.get("me")}
@@ -1264,6 +1299,9 @@ class Tracker:
             "lastMap": ultima["map"],
             "lastAlly": ultima["ally"],
             "lastWon": ultima["won"],
+            "list": [{"at": x["at"], "map": x["map"], "ally": x["ally"],
+                      "won": x["won"]}
+                     for x in storia[:DETTAGLI_INCONTRI]],
         }
 
     def load_peek_cache(self) -> None:
@@ -1297,6 +1335,11 @@ class Tracker:
             CACHE_FILE.write_text(
                 json.dumps({"v": ROW_CACHE_VERSION, "accounts": tutti}),
                 encoding="utf-8")
+
+    def queue_label(self, queue: str) -> str:
+        chiave = str(queue or "").lower()
+        return (self._queues.get(chiave)
+                or QUEUE_LABELS.get(chiave, queue or "—"))
 
     def map_label(self, path: str) -> str:
         if not path:
@@ -1826,7 +1869,7 @@ class Tracker:
         self.state.live = {
             "loopState": loop,
             "loopLabel": STATE_LABELS.get(loop, loop or "—"),
-            "queue": QUEUE_LABELS.get(queue, queue or "—"),
+            "queue": self.queue_label(queue),
             "map": self.map_label(campo("matchMap")),
             "partySize": campo("partySize", None),
             "provisioning": campo("provisioningFlow"),
@@ -1937,10 +1980,16 @@ class Tracker:
         return had
 
     async def tieni_la_lobby(self) -> None:
-        if self._last_loop_state not in ("INGAME", "PREGAME"):
+        stato = self._last_loop_state
+        if stato not in ("INGAME", "PREGAME", "MENUS", "AWAY"):
             self._lobby_ko = 0
             return
         if time.time() - self._roster_at <= 5:
+            return
+        if stato in ("MENUS", "AWAY"):
+            self._lobby_ko = 0
+            with contextlib.suppress(Exception):
+                await self.refresh_roster()
             return
         adesso = (self.state.roster or {}).get("loop")
         try:
@@ -1975,9 +2024,13 @@ class Tracker:
             return
 
         if loop == "MENUS" or not match_id:
+            if await self.mostra_party():
+                return
+            self._party_id = ""
             if self.forget_roster():
                 await self.push()
             return
+        self._party_id = ""
         if (not force and loop == "INGAME" and match_id == self._roster_match
                 and self._roster_loop == "INGAME"):
             return
@@ -2033,6 +2086,65 @@ class Tracker:
                 self._peek_task = asyncio.create_task(
                     self._fill_stats([p["puuid"] for p in players]))
 
+    async def mostra_party(self) -> bool:
+        try:
+            mio = await self.riot.remote_get(
+                f"{self.riot.glz}/parties/v1/players/{self.riot.puuid}")
+            pid = str((mio or {}).get("CurrentPartyID") or "")
+            if not pid:
+                return False
+            party = await self.riot.remote_get(
+                f"{self.riot.glz}/parties/v1/parties/{pid}")
+        except Exception as exc:
+            LOG.debug("Party non leggibile: %s", short_error(exc))
+            return False
+        membri = (party or {}).get("Members") or []
+        if len(membri) < 2:
+            return False
+
+        if pid != self._party_id:
+            self._tiers.clear()
+            self._pstats.clear()
+            if self._peek_task and not self._peek_task.done():
+                self._peek_task.cancel()
+            self._peek_task = None
+
+        con_capo = [(bool(m.get("IsOwner")), self._player_row(m, True, True))
+                    for m in membri]
+        players = [riga for _, riga in con_capo]
+        await self._decorate(players)
+
+        stato = str((party or {}).get("State") or "")
+        coda = str(((party or {}).get("MatchmakingData") or {}).get("QueueID") or "")
+        con_capo.sort(key=lambda x: (not x[0], not x[1]["me"],
+                                     x[1]["name"] or "z"))
+        self.state.roster = {
+            "matchId": "",
+            "loop": "PARTY",
+            "party": True,
+            "searching": stato.upper() == "MATCHMAKING",
+            "queue": self.queue_label(coda),
+            "queueId": coda,
+            "map": "—",
+            "ffa": False,
+            "side": "",
+            "enemiesHidden": False,
+            "allies": [riga for _, riga in con_capo],
+            "enemies": [],
+        }
+        if pid != self._party_id:
+            LOG.info("Party di %d: %s", len(players),
+                     ", ".join(p["name"] or "?" for p in players))
+        self._party_id = pid
+        self._roster_match, self._roster_loop = "", "PARTY"
+        await self.push()
+
+        if self.peek != 0 and any(p["puuid"] not in self._pstats for p in players):
+            if self._peek_task is None or self._peek_task.done():
+                self._peek_task = asyncio.create_task(
+                    self._fill_stats([p["puuid"] for p in players]))
+        return True
+
     async def _coregame_roster(self, match_id: str):
         det = await self.riot.remote_get(
             f"{self.riot.glz}/core-game/v1/matches/{match_id}")
@@ -2048,7 +2160,7 @@ class Tracker:
         giocati = sum(x for x in punteggio if isinstance(x, int)) if punteggio else None
         return players, {
             "map": self.map_label(det.get("MapID", "")),
-            "queue": QUEUE_LABELS.get(queue, queue or "—"),
+            "queue": self.queue_label(queue),
             "queueId": queue,
             "ffa": queue in FFA_QUEUES,
             "myTeam": "" if queue in FFA_QUEUES else my_team,
@@ -2073,7 +2185,7 @@ class Tracker:
         ffa = queue in FFA_QUEUES
         return players, {
             "map": self.map_label(det.get("MapID", "")),
-            "queue": QUEUE_LABELS.get(queue, queue or "—"),
+            "queue": self.queue_label(queue),
             "queueId": queue,
             "ffa": ffa,
             "side": "" if ffa else side_label(
@@ -2109,7 +2221,8 @@ class Tracker:
         with contextlib.suppress(Exception):
             await self._load_names([p["puuid"] for p in players])
         for p in players:
-            p["name"] = "" if p["incognito"] else self._names.get(p["puuid"], "")
+            p["name"] = ("" if p["incognito"] and not p["me"]
+                         else self._names.get(p["puuid"], ""))
 
         missing = [p["puuid"] for p in players
                    if p["puuid"] and p["puuid"] not in self._tiers]
@@ -2526,14 +2639,34 @@ def mock_state() -> State:
             "peakTier": peak, "peakTierName": tier_name(peak),
             "actGames": rng.randint(0, 180),
             "met": rng.choice([None, None, None, {
+                "list": [
+                    {"at": int(time.time() * 1000) - 3 * 86400000,
+                     "map": "Ascent", "ally": True, "won": True},
+                ],
                 "times": 1, "ally": 1, "enemy": 0, "won": 1, "lost": 0,
                 "lastAt": int(time.time() * 1000) - 3 * 86400000,
                 "lastMap": "Ascent", "lastAlly": True, "lastWon": True,
             }, {
+                "list": [
+                    {"at": int(time.time() * 1000) - 40 * 86400000,
+                     "map": "Split", "ally": False, "won": False},
+                    {"at": int(time.time() * 1000) - 52 * 86400000,
+                     "map": "Haven", "ally": False, "won": False},
+                    {"at": int(time.time() * 1000) - 61 * 86400000,
+                     "map": "Bind", "ally": True, "won": True},
+                    {"at": int(time.time() * 1000) - 70 * 86400000,
+                     "map": "Icebox", "ally": False, "won": False},
+                ],
                 "times": 4, "ally": 1, "enemy": 3, "won": 1, "lost": 3,
                 "lastAt": int(time.time() * 1000) - 40 * 86400000,
                 "lastMap": "Split", "lastAlly": False, "lastWon": False,
             }, {
+                "list": [
+                    {"at": int(time.time() * 1000) - 86400000,
+                     "map": "Lotus", "ally": False, "won": None},
+                    {"at": int(time.time() * 1000) - 9 * 86400000,
+                     "map": "Sunset", "ally": False, "won": True},
+                ],
                 "times": 2, "ally": 0, "enemy": 2, "won": 1, "lost": 1,
                 "lastAt": int(time.time() * 1000) - 86400000,
                 "lastMap": "Lotus", "lastAlly": False, "lastWon": None,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="67">
+<meta name="valo-ui" content="71">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -156,7 +156,7 @@ table.roster{table-layout:fixed;margin-top:2px}
 
 .roster tbody td{height:37px;line-height:1.2}
 .roster .rk{max-width:100%;overflow:hidden}
-.roster tbody tr:last-child td{border-bottom:none}
+table.roster > tbody > tr:last-child > td{border-bottom:none}
 .roster .ag{width:74px}
 .roster .lv{width:44px}
 .roster .gm{width:52px}
@@ -199,11 +199,26 @@ table.roster{table-layout:fixed;margin-top:2px}
 .metbadge{
   display:inline-block;margin-left:6px;padding:0 4px;
   font-family:var(--mono);font-size:9.5px;line-height:14px;font-weight:500;
-  border:1px solid var(--rule);border-radius:2px;color:var(--muted);
-  vertical-align:1px;cursor:help;
+  background:none;border:1px solid var(--rule);border-radius:2px;
+  color:var(--ivory);vertical-align:1px;cursor:pointer;
+  transition:border-color .15s;
 }
-.metbadge.buono{border-color:var(--win);color:var(--win)}
-.metbadge.brutto{border-color:var(--rose);color:var(--rose)}
+.metbadge:hover,.metbadge.aperta{border-color:var(--ivory)}
+.metbadge:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.metrow[hidden]{display:none}
+.metrow > td{padding:0 0 10px 0;border-bottom:none}
+.metbox{
+  border-left:2px solid var(--rule);padding:10px 0 10px 14px;margin-left:74px;
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);
+}
+.metbox .mettop{color:var(--ivory);margin-bottom:8px}
+.metbox .metvia{color:var(--dim)}
+.roster .metbox table{width:auto;border-collapse:collapse;table-layout:auto}
+.roster .metbox td{
+  height:auto;padding:2px 18px 2px 0;line-height:1.5;text-align:left;
+  white-space:nowrap;color:var(--muted);border-bottom:none;
+}
+.roster .metbox td.mq{color:var(--dim)}
 .roster .k,.roster .s{width:42px}
 .roster .h,.roster .w{width:48px}
 .roster .r{width:190px}
@@ -217,8 +232,8 @@ table.roster{table-layout:fixed;margin-top:2px}
   color:var(--ivory);font-family:var(--disp);font-size:13px;font-weight:400;
 }
 .roster td.lv{color:var(--dim);font-size:11px}
-.roster tbody tr:nth-child(even) td{background:rgba(255,255,255,.018)}
-.roster tbody tr:hover td{background:var(--raise)}
+table.roster > tbody > tr.pari > td{background:rgba(255,255,255,.018)}
+table.roster > tbody > tr:not(.metrow):hover > td{background:var(--raise)}
 .roster td.r,.roster td.pk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .roster td.r.stale .rk{opacity:.45}
 .roster tr.me td.ag{color:var(--signal)}
@@ -545,14 +560,18 @@ const $ = (id) => document.getElementById(id);
 const I18N = {
   it: {
     refresh:"aggiorna", close:"chiudi", other:"ENGLISH",
-    waiting:"in attesa", error:"errore", noGame:"gioco non attivo", menus:"nei menu",
+    error:"errore", noGame:"gioco non attivo", menus:"nei menu",
     teams:"Squadre", players:"Giocatori", agentSelect:"Agent select",
     yourTeam:"la tua squadra", enemies:"avversari", ffa:"tutti contro tutti",
+    party:"party", partyQueue:"in coda per {q}", partyIdle:"nel menu",
     enemiesLater:"In agent select il client non espone la squadra avversaria: compare quando la partita comincia.",
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
-    metTimes:"Gia' incontrato {n} volte", metOnce:"Gia' incontrato una volta",
+    metTimes:"Gia' incontrato {n} volte in ranked",
+    metOnce:"Gia' incontrato una volta in ranked",
+    metOpen:"vedi le partite ranked in comune",
+    metWith:"insieme", metAgainst:"contro", metNoResult:"—",
     metAsAlly:"{n} da alleato", metAsFoe:"{n} da avversario",
     metRecord:"Bilancio {v}V {s}S", metNoRecord:"Esito non registrato",
     metLast:"Ultima volta {q} su {m}, da {c}, {e}",
@@ -609,14 +628,18 @@ const I18N = {
   },
   en: {
     refresh:"refresh", close:"quit", other:"ITALIANO",
-    waiting:"waiting", error:"error", noGame:"game not running", menus:"in menus",
+    error:"error", noGame:"game not running", menus:"in menus",
     teams:"Teams", players:"Players", agentSelect:"Agent select",
     yourTeam:"your team", enemies:"enemies", ffa:"free for all",
+    party:"party", partyQueue:"queued for {q}", partyIdle:"in the menus",
     enemiesLater:"In agent select the client does not expose the enemy team: it shows up once the match starts.",
     rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
-    metTimes:"Met {n} times before", metOnce:"Met once before",
+    metTimes:"Met {n} times before in ranked",
+    metOnce:"Met once before in ranked",
+    metOpen:"see the ranked games you shared",
+    metWith:"with", metAgainst:"against", metNoResult:"—",
     metAsAlly:"{n} as teammate", metAsFoe:"{n} as opponent",
     metRecord:"Record {v}W {s}L", metNoRecord:"Result not recorded",
     metLast:"Last time {q} on {m}, as {c}, {e}",
@@ -847,10 +870,15 @@ function renderRoster(r) {
   if (!allies.length && !enemies.length) { card.hidden = true; return; }
 
   card.hidden = false;
-  $("rosterTitle").textContent = r.ffa ? t("players")
+  $("rosterTitle").textContent = r.party ? t("party")
+    : r.ffa ? t("players")
     : r.loop === "PREGAME" ? t("agentSelect") : t("teams");
 
-  const body = r.ffa
+  const body = r.party
+    ? teamCol(r.searching
+        ? t("partyQueue").replace("{q}", r.queue || "?")
+        : t("partyIdle"), allies)
+    : r.ffa
     ? teamCol(t("ffa"), allies.concat(enemies))
     : `${teamCol(t("yourTeam"), allies)}
        ${enemies.length
@@ -873,7 +901,7 @@ const teamCol = (title, rows) => `<div class="team">
         <th class="r">${t("rank")}</th><th class="pk">${t("peak")}</th>
         <th class="cp"></th>
       </tr></thead>
-      <tbody>${rows.map(playerRow).join("")}</tbody>
+      <tbody>${rows.map((p, i) => playerRow(p, i)).join("")}</tbody>
     </table>
   </div>`;
 
@@ -942,10 +970,44 @@ function testoIncontro(m) {
 function targhettaIncontro(p) {
   const m = p.met;
   if (!m || !m.times) return "";
-  const cls = m.won > m.lost ? " buono" : m.lost > m.won ? " brutto" : "";
-  return `<span class="metbadge${cls}" title="${esc(testoIncontro(m))}">`
-    + `${m.times}×</span>`;
+  return `<button class="metbadge" type="button" data-met="${esc(p.puuid)}"`
+    + ` title="${esc(t("metOpen"))}">${m.times}×</button>`;
 }
+
+function rigaDettaglio(p) {
+  const m = p.met;
+  if (!m || !m.times) return "";
+  const righe = (m.list || []).map((x) => {
+    const esito = x.won === true ? t("metWon")
+      : x.won === false ? t("metLost") : t("metNoResult");
+    return `<tr><td>${esc(quandoFa(x.at))}</td>`
+      + `<td class="mq">${esc(x.map || "—")}</td>`
+      + `<td>${esc(x.ally ? t("metWith") : t("metAgainst"))}</td>`
+      + `<td>${esc(esito)}</td></tr>`;
+  }).join("");
+  const restanti = m.times - (m.list || []).length;
+  return `<tr class="metrow" data-met="${esc(p.puuid)}" hidden><td colspan="11">
+      <div class="metbox">
+        <div class="mettop">${esc(testoIncontro(m))}</div>
+        <table>${righe}</table>
+        ${restanti > 0 ? `<div class="metvia">+ ${restanti}</div>` : ""}
+      </div></td></tr>`;
+}
+
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest(".metbadge");
+  if (!b) return;
+  const chi = b.dataset.met;
+  const riga = document.querySelector(`.metrow[data-met="${CSS.escape(chi)}"]`);
+  if (!riga) return;
+  const apri = riga.hidden;
+  document.querySelectorAll(".metrow").forEach((r) => { r.hidden = true; });
+  document.querySelectorAll(".metbadge").forEach((x) => {
+    x.classList.remove("aperta");
+  });
+  riga.hidden = !apri;
+  b.classList.toggle("aperta", apri);
+});
 
 function testoCopia(p) {
   const nome = p.peakTierName && p.peakTierName !== "—" ? p.peakTierName : "—";
@@ -957,7 +1019,7 @@ function testoCopia(p) {
   const kd = s.kd == null ? "—" : dec(s.kd);
   const wr = s.winRate == null ? "—" : s.winRate + "%";
   const acs = s.acs == null ? "—" : s.acs;
-  const chi = !p.incognito && p.name ? `${p.name}, ` : "";
+  const chi = (!p.incognito || p.me) && p.name ? `${p.name}, ` : "";
   return `${chi}PEAK: ${peak}, HS: ${hs}, KD: ${kd}, WINRATE: ${wr}, ACS: ${acs}`;
 }
 
@@ -987,11 +1049,13 @@ document.addEventListener("click", async (ev) => {
   setTimeout(() => b.classList.remove("fatto", "male"), 1200);
 });
 
-function playerRow(p) {
-  const name = p.incognito ? t("anon") : (p.name || "—");
-  const cls = (p.me ? " me" : "") + (p.locked === false ? " soft" : "");
+function playerRow(p, i) {
+  const nascosto = p.incognito && !p.me;
+  const name = nascosto ? t("anon") : (p.name || "—");
+  const cls = (p.me ? " me" : "") + (p.locked === false ? " soft" : "")
+    + (i % 2 ? " pari" : "");
   const lvl = p.level == null ? "—" : p.level;
-  const shown = p.incognito || !p.name
+  const shown = nascosto || !p.name
     ? esc(name)
     : `<a href="${esc(trackerUrl(p.name))}" target="_blank" rel="noopener"
          title="${esc(t("openOn").replace("{n}", p.name))}">${esc(p.name)}</a>`;
@@ -1008,7 +1072,7 @@ function playerRow(p) {
       <td class="pk">${rankChip(p.peakTier, p.peakTierName, p.peakAct)}</td>
       <td class="cp"><button class="copybtn" type="button"
         title="${esc(t("copyHint"))}" data-copia="${esc(testoCopia(p))}"></button></td>
-    </tr>`;
+    </tr>${rigaDettaglio(p)}`;
 }
 
 function mapRow(m) {
