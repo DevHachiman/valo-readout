@@ -1,101 +1,86 @@
 # VALO-READOUT
 
-A Valorant tracker that runs entirely on your own PC.
+**A Valorant tracker that runs entirely on your own PC.**
 
-It reads your live match from the Riot client, shows who is in the lobby with
-their rank, peak and averages, and keeps a permanent local archive of your
-competitive matches so your history survives even if the third-party archive
-it borrows from ever disappears.
+It reads your live match from the Riot client, shows who is in the lobby with their rank, peak and averages, and keeps a permanent local archive of your competitive matches — so your history survives even if the third-party archive it borrows from ever disappears.
 
-No account, no login, no server. It opens in your browser at
-`http://127.0.0.1:7890` and talks to nothing except Riot and, optionally, one
-free stats archive.
+No account. No login. No server. It opens in your browser at `http://127.0.0.1:7890` and talks to nothing except Riot and, optionally, one free stats archive.
+
+```
+Download  →  unzip  →  double-click  →  play
+```
+
+> [!IMPORTANT]
+> **Open the tracker at least once every ~43 competitive matches.**
+> Riot only keeps a moving window of your last ~43 matches. Whatever falls out of that window before the tracker sees it is gone — for every tracker on the internet, permanently. [Full explanation below.](#your-archive-the-point-of-running-this-locally)
+
+---
+
+## Contents
+
+- [What it shows](#what-it-shows)
+- [Install](#install)
+- [The optional API key](#the-optional-api-key)
+- [Your archive: the point of running this locally](#your-archive-the-point-of-running-this-locally)
+- [Where your data lives](#where-your-data-lives)
+- [What it costs your PC](#what-it-costs-your-pc)
+- [What you get](#what-you-get)
+- [Limitations](#limitations)
+- [FAQ](#faq)
+- [How it works](#how-it-works)
+- [License](#license)
 
 ---
 
 ## What it shows
-**While you play**
-<img width="1095" height="627" alt="Screenshot 2026-08-11 194048" src="https://github.com/user-attachments/assets/b0c2e6b6-c9bb-4af1-8920-4dfa2adc1c9d" />
-<img width="1111" height="773" alt="Screenshot 2026-08-11 194156" src="https://github.com/user-attachments/assets/2bba333a-6f5f-4700-b722-e358444cc043" />
 
-- **Your side — attack or defense — during agent select**, before the match
-  loads. The game itself does not tell you until you are already on the map;
-  the tracker tells you while you are still choosing an agent, so you can pick
+### While you play
 
-  for the half you are actually about to play. It is colour-coded the same way
-  as the state pill: **red for attack, cyan for defense**.
-- Match state (menus, agent select, in game), queue and map
-- Both teams: agent, name, level, current rank, **peak rank**, and per-player
-  k/d, ACS, headshot and win rate for the current act — the rank of every
-  player, which the in-game scoreboard never shows you
-- Party colours are *not* shown, and cannot be — see [Limitations](#limitations)
-
-**Your own numbers**
-<img width="1150" height="1191" alt="Screenshot 2026-08-11 193821" src="https://github.com/user-attachments/assets/44db6c86-8aaa-4fe8-bb4f-a299a09eab6f" />
-- Current rank, RR, peak rank with the act it was reached in, and peak RR
-- Act totals: wins, losses, win rate, KDA, k/d, ACS, headshot, kills per round,
-  best agent
-- Recent match history with the RR change of each game
-- Per-map breakdown: win rate, k/d, ACS, headshot
-- A per-act table going back as far as your archive reaches, with the peak rank
-  of each act
-
-**What it costs you: nothing**
-
-This matters as much as the numbers, so it is measured, not claimed.
+<img width="1336" height="1226" alt="Screenshot 2026-08-29 145909" src="https://github.com/user-attachments/assets/ff1b4c60-8b55-4693-bc9c-6f54726b136f" />
 
 | | |
 |---|---|
-| RAM | ~65 MB |
-| CPU, idle in menus | 0.0% |
-| CPU, average over 22 minutes | 0.006% of the machine |
-| Impact on your FPS | none |
+| **Your side, in agent select** | Attack or defense, before the match loads. The game does not tell you until you are already on the map. Colour coded like the state pill: **red for attack, cyan for defense**. |
+| **The full lobby** | Both teams: agent, name, level, current rank, **peak rank**, competitive games this act, and per-player k/d, ACS, headshot and win rate — the rank of every player, which the in-game scoreboard never shows you. |
+| **People you've met before** | Anyone you have played with gets a badge. Click it and a box opens in place, listing your last games together: when, the map, the result, and whether they were with you or against you. Ranked only. |
+| **Your party in the menus** | Who is in the lobby and which queue you are searching, before the match even starts. |
+| **Copy button** | Turns the lobby into plain text you can paste anywhere. |
+| **Match state** | Queue and map at a glance. |
 
-The tracker is a **separate program**. It does not overlay the game, does not
-inject anything into it, does not hook DirectX, and never reads or writes
-`valorant.exe`'s memory. It talks to the same local HTTP port the Riot client
-already runs for its own use. Valorant cannot tell the difference between
-playing with it open and playing without it, and neither can your frame rate.
+### Your own numbers
 
-You read it on a second monitor, or with alt-tab. Nothing covers the game.
+<img width="1356" height="1178" alt="Screenshot 2026-08-29 145922" src="https://github.com/user-attachments/assets/14daf1e7-e719-4915-9194-f37740e8dbf6" />
 
-**The interface**
+- **Rank** — current rank and RR, peak rank with the act it was reached in, and peak RR.
+- **Act totals** — wins, losses, win rate, KDA, k/d, ACS, headshot, kills per round, best agent.
+- **Recent matches** — with the RR change of each game.
+- **Per map** — win rate, k/d, ACS, headshot.
+- **Per act** — a table going back as far as your archive reaches, with the peak rank of each act.
 
-- **One page.** No menus, no tabs, no settings screen, no login, no onboarding.
-  Everything is visible at once.
-- **Every block folds.** Each card has a **−** button; press it and the card
-  collapses to its title. Fold away what you do not care about and the layout
-  is remembered for next time.
-- **Nothing to learn.** Top to bottom: the lobby (only while you are in one),
-  your rank, recent matches, maps, acts. Colours mean one thing each — green is
-  a win, red a loss, and a dimmed number means "computed on fewer matches than
-  the act actually contains", with a tooltip saying how many.
+### The interface
+
+- **One page.** No menus, no tabs, no settings screen, no login.
+- **Every block folds.** Each card has a **−** button, and the layout is remembered for next time.
+- **Colours mean one thing each.** Green is a win, red is a loss. A dimmed number means *"computed on fewer matches than the act actually contains"*, with a tooltip saying how many.
 
 ---
 
 ## Install
 
-There are two ways. Pick one.
+### Option 1 — Ready-made executable (easiest)
 
-### 1. Ready-made executable (easiest)
-
-1. Download `valo-readout.zip` from the **Releases** page.
+1. Download `valo-readout.zip` from the **[Releases](../../releases)** page.
 2. Unzip it anywhere.
 3. Double-click `valo-readout.exe`.
 
-That is all. Python is already inside the file; nothing gets installed on your
-system.
+Python is already inside the file; nothing gets installed on your system.
 
-The first time, Windows will say *"Windows protected your PC"*. This happens
-because the file is not signed with a paid certificate, not because anything is
-wrong with it. Click **More info → Run anyway**. It asks once.
+> [!NOTE]
+> The first time, Windows will say *"Windows protected your PC"*. That is because the file is not signed with a paid certificate, not because anything is wrong with it. Click **More info → Run anyway**. It asks once.
 
-### 2. From source (manual)
+### Option 2 — From source
 
-Use this if you would rather run code you can read, or you are not on Windows
-and want to adapt it.
-
-**Requirements:** Python 3.11 or newer.
+**Requires Python 3.11 or newer.**
 
 ```bash
 git clone <this-repo>
@@ -106,14 +91,15 @@ python bridge.py
 
 The dashboard opens in your browser by itself.
 
-On Windows there are two double-click launchers in the repo:
+On Windows there are two double-click launchers:
 
 | file | what it does |
 |---|---|
-| `valo-readout.bat` | runs the bridge in a visible console. Installs `aiohttp` for you on first run. Use this one when something goes wrong — you see everything. |
-| `valo-readout.vbs` | runs it with `pythonw.exe`, no console window at all. This is the everyday launcher. |
+| `valo-readout.bat` | Visible console, installs `aiohttp` on first run. Use it when something goes wrong — you see everything. |
+| `valo-readout.vbs` | `pythonw.exe`, no console window. The everyday launcher. |
 
-**Useful flags**
+<details>
+<summary><b>Command-line flags</b></summary>
 
 ```
 python bridge.py --port 7890      # change the port
@@ -123,170 +109,109 @@ python bridge.py --diag           # probe every endpoint and print what answers
 python bridge.py --peek 0         # do not read other players' match history
 ```
 
-### Building your own executable
+</details>
 
-```
-costruisci.bat
-```
+<details>
+<summary><b>Building your own executable</b></summary>
 
-It installs PyInstaller and produces `dist/valo-readout.exe` on your machine,
-from the source you can read. Your file will not be byte-identical to the one
-in Releases — PyInstaller builds are not reproducible — and that is fine. Use
-yours.
+Run `costruisci.bat` ("build" in Italian). It installs PyInstaller and produces `dist/valo-readout.exe` from the source you can read.
+
+Your file will not be byte-identical to the one in Releases — PyInstaller builds are not reproducible — and that is fine. Use yours.
+
+</details>
 
 ### Before the first run
 
-**Launch Valorant at least once before you start the tracker.** Your region and
-shard are read out of the game's own log file
-(`%LOCALAPPDATA%\VALORANT\Saved\Logs\ShooterGame.log`, from the
-`glz-<region>-1.<shard>.a.pvp.net` line it writes). If that log has never
-existed, the tracker falls back to asking the Riot client for your region and
-guessing the shard from a table — usually right, not always.
+> [!TIP]
+> **Launch Valorant at least once before starting the tracker.**
+> Your region and shard are read from the game's own log (`%LOCALAPPDATA%\VALORANT\Saved\Logs\ShooterGame.log`). Without that log the tracker asks the Riot client and guesses the shard from a table — usually right, not always.
 
-Keep Valorant running while you use it. The tracker reads from the live client;
-with the game closed there is nothing to read.
+Keep Valorant running while you use the tracker. With the game closed there is nothing to read.
+
+### Staying up to date
+
+While the tracker is running it asks GitHub every six hours whether a newer release exists. If there is one, a popup tells you what changed and updates it in one click — it downloads, swaps itself and restarts. It only ever downloads from this repository's own release files, and refuses anything oversized.
+
+The check happens **only while the tracker is open**. Closed, it does nothing.
 
 ### Closing it properly
 
-Use the **CLOSE** button at the top right. That actually stops the bridge.
+Use the **CLOSE** button at the top right.
 
-Closing the browser tab does **not** stop it — the tracker is a program, and
-the page is just its window. If you close the tab and want it back, reopen
-`http://127.0.0.1:7890`.
+Closing the browser tab does *not* stop it — the tracker is a program and the page is just its window. Reopen `http://127.0.0.1:7890` to get it back.
 
 ---
 
 ## The optional API key
 
-Riot's own endpoints only expose your **last ~43 competitive matches**.
-Everything older is out of reach.
+**Short version:** the tracker works without a key. A free key just lets it see more matches.
 
-With a free [HenrikDev](https://api.henrikdev.xyz/dashboard/) key, the tracker
-reaches almost the whole act — for you *and* for the other nine players in your
-lobby. Without a key it still works, just on fewer matches.
+Riot's own endpoints only expose your **last ~43 competitive matches**. Everything older is out of reach. With a free [HenrikDev](https://api.henrikdev.xyz/dashboard/) key the tracker reaches almost the whole act — for you *and* for the other nine players in your lobby.
 
-The tracker opens the key panel by itself on first run. The **KEY** button at
-the top reopens it whenever you want. The key is tested before it is saved, so
-a typo tells you immediately.
+The tracker opens the key panel on first run; the **KEY** button reopens it. The key is tested before being saved, so a typo tells you immediately.
 
 ### How to get one
 
-It is free and takes about two minutes.
+Free, about two minutes.
 
-**1. Join the HenrikDev Discord** — <https://discord.gg/X3GaVkX2YN>
+1. **Optional:** join the HenrikDev Discord — <https://discord.gg/X3GaVkX2YN>
+2. **Open the dashboard and log in** — <https://api.henrikdev.xyz/dashboard/>
+   Log in with Discord and authorize it. No separate account to create.
+3. **Sidebar → `API Keys` → `Generate New Key`**
+4. **Fill in the form:**
 
-Optional. 
+   | field | what to put |
+   |---|---|
+   | **Application Name** | Anything — `valo-readout` does fine |
+   | **Description** | One honest line, e.g. *"Personal Valorant stats dashboard, local use only"* |
+   | **Game** | Valorant — already selected |
+   | **Access Tier** | Each tier shows its rate limit. Pick the free one: **Standard** |
+   | **Commercial checkbox** | **Leave it unchecked.** It means *"my app makes money"* and puts you in the paid track. |
 
-**2. Open the dashboard and log in** — <https://api.henrikdev.xyz/dashboard/>
+5. **Press `Generate Key`.** If the tier was not a reviewed one, the key exists immediately; otherwise the card says *Pending manual review* and you wait.
+6. **Copy it into the tracker.** On the key's card, next to **Access Token**, reveal it and copy it. Paste it into the **KEY** panel and save.
 
-Log in with Discord and authorize it. There is no separate account to create.
-
-**3. Sidebar → `API Keys` → `Generate New Key`**
-
-**4. Fill in the form**
-
-| field | what to put |
-|---|---|
-| **Application Name** | anything — `valo-readout` does fine |
-| **Description** | one honest line, e.g. *"Personal Valorant stats dashboard, local use only"* |
-| **Game** | Valorant — already selected |
-| **Access Tier** | each tier shows its rate limit next to its name. Pick the free one [Standard] |
-| **Commercial checkbox** | **leave it unchecked.** It means *"my app makes money"*, and ticking it puts you in the paid track. |
-
-**5. Press `Generate Key`**
-
-If the tier was not a reviewed one, the key exists immediately. If it was, the
-card says *Pending manual review* and you wait.
-
-**6. Copy it into the tracker**
-
-On the key's card, next to **Access Token**, use the eye button to reveal it
-and the copy button to copy it. Paste it into the tracker's **KEY** panel and
-save. It is stored in `%LOCALAPPDATA%\valo-readout\henrik.key` on your machine
-and sent to nobody but HenrikDev.
+Your key is stored in `%LOCALAPPDATA%\valo-readout\henrik.key` and sent to nobody but HenrikDev.
 
 ### About the rate limit
 
-The limit is per key, and since v4 of that API **one request can cost more than
-one**: the call itself counts 1, plus 1 for every request the service has to
-make to Riot in the background to answer you. Cached answers cost only 1. This
-is why the tracker caches aggressively and spaces its own requests out.
+It is **per key**, and since v4 of that API one request can cost more than one: the call counts 1, plus 1 for every request the service makes to Riot in the background to answer you. Cached answers cost 1.
 
-Get your own key rather than borrowing someone's — two people on one key throttle
-each other.
+This is why the tracker caches hard and spaces its requests out.
+
+> [!WARNING]
+> Get your own key rather than borrowing one — two people on one key throttle each other.
 
 ---
 
 ## Your archive: the point of running this locally
 
-This is the part that makes a local tracker worth having, so read it.
+**Riot only keeps a moving window of your last ~43 competitive matches.** Not "the last 43 you can see easily" — the last 43 that exist for anyone to read. Match 44 is not hidden, it is *gone*, for every tracker on the internet, including this one.
 
-**Riot only keeps a moving window of your last ~43 competitive matches.** Not
-"the last 43 you can see easily" — the last 43 that exist for anyone to read.
-Match 44 is not hidden, it is *gone*, for every tracker on the internet,
-including this one.
+**This tracker copies every match it sees into `matches.json` on your disk and never deletes anything from it.** The window keeps moving, your archive keeps growing, and after a while it holds matches Riot itself can no longer show you.
 
-**This tracker copies every match it sees into `matches.json` on your disk, and
-never deletes anything from it.** So the window keeps moving and your archive
-keeps growing. After a while the archive holds matches that Riot itself can no
-longer show you, and it keeps holding them for as long as you keep the file.
+### The catch
 
-### The catch, with numbers
+The archive can only contain what the tracker actually saw, and Riot's window moves whether you are watching or not.
 
-The archive can only contain what the tracker actually saw. Riot's window
-moves whether you are watching it or not.
+| what you do | what happens |
+|---|---|
+| Open it, play 20, open it again | Window slid 43 → 63. It saw them all. **Nothing lost.** |
+| Open it, play 60 over five days, open it again | Window slid 43 → 103. Matches 44–60 fell out before it ever looked. **Lost forever.** |
 
-**Good — you lose nothing:**
+Nothing brings those back. Not this tracker, not the API key, not Riot support.
 
-```
-Monday    you open the tracker      Riot's window: matches 1-43     archive: 43
-          you play 20 matches       window slides to 21-63
-Tuesday   you open the tracker      it sees 21-63; 44-63 are new    archive: 63
-```
+> [!IMPORTANT]
+> **The rule: open the tracker at least once every ~43 competitive matches.**
+>
+> The easiest way to never think about it again is to **leave it running while you play** — it updates after every match. With an API key the margin is much wider, since the third-party archive reaches back across the whole act.
 
-The 20 new matches were still inside the window when the tracker looked. All
-saved.
+### Once a match is in the archive
 
-**Bad — you lose 17 matches, permanently:**
-
-```
-Monday    you open the tracker      window: matches 1-43            archive: 43
-          over five days you
-          play 60 matches           window slides to 61-103
-Saturday  you open the tracker      it sees 61-103 only             archive: 103
-                                    matches 44-60 fell out of the
-                                    window before it ever looked -> lost forever
-```
-
-Nothing can bring 44–60 back. Not this tracker, not the API key, not Riot
-support. They are simply not stored anywhere anymore.
-
-### The rule
-
-> **Open the tracker at least once every ~43 competitive matches.**
-
-The easiest way to never think about it again is to **just leave it running
-while you play**. It updates after every match, so the gap between what it has
-seen and what you have played is never more than one game.
-
-**With an API key the margin is much wider** — the third-party archive reaches
-back across the whole act rather than 43 matches, so forgetting for a week
-usually costs you nothing. Without a key, the 43-match rule is the whole story.
-
-### And once it is in the archive
-
-- **It is not deleted, ever.** No cap, no pruning, no expiry. ~400 bytes per
-  match; a year of playing is a few MB.
-- **It survives the sources.** Matches that only the third-party archive knew
-  about are copied in too, so if that service shuts down tomorrow, everything
-  you already had stays readable.
-- **It survives act changes.** A new act starts a new set of totals; the old
-  act stays in the archive exactly as it was. Acts accumulate — they do not
-  replace each other.
-- **It survives account switching.** Accounts sit side by side in the same
-  file. Switching never overwrites another account's history.
+- **It is never deleted.** No cap, no pruning, no expiry. ~400 bytes per match; a year of playing is a few MB.
+- **It survives the sources.** Matches only the third-party archive knew about are copied in too, so if that service shuts down tomorrow, what you already had stays readable.
+- **It survives act changes and account switching.** Acts accumulate instead of replacing each other, and accounts sit side by side without overwriting.
 - **Back it up.** `matches.json` is the one file here you cannot re-download.
-  Copy it to a new PC by hand, and copy it somewhere safe now and then.
 
 ---
 
@@ -296,52 +221,48 @@ Everything is in `%LOCALAPPDATA%\valo-readout\` and nowhere else:
 
 | file | contents |
 |---|---|
-| `matches.json` | your own matches, kept forever (~400 bytes each) |
-| `peeked.json` | matches read for other players (capped at 12,000) |
-| `henrik.key` | your API key, if you gave one |
-| `bridge.log` | the log (truncated past 1 MB) |
-| `bridge.lock` | port of the running instance, so a second copy cannot start |
+| `matches.json` | Your own matches, kept forever, plus the lobbies you have met (last 4,000) |
+| `peeked.json` | Matches read for other players (capped at 12,000) |
+| `henrik.key` | Your API key, if you gave one |
+| `bridge.log` | The log (truncated past 1 MB) |
+| `bridge.lock` | Port of the running instance, so a second copy cannot start |
 
-A few MB in total, with a ceiling around fifteen. Delete the folder to reset
-everything; it rebuilds itself — except `matches.json`, which is the one thing
-you cannot get back. It sits deliberately outside OneDrive, so moving to a new
-PC means copying it by hand.
+A few MB in total, with a ceiling around fifteen. Delete the folder to reset everything; it rebuilds itself — except `matches.json`, which is the one thing you cannot get back.
+
+It sits deliberately outside OneDrive, so moving to a new PC means copying it by hand.
 
 ---
 
-## Strengths
+## What it costs your PC
 
-- **Fully local.** Listens on `127.0.0.1` only. Nothing is reachable from
-  outside your machine, and no data leaves it except the requests to Riot and,
-  if you enable it, the stats archive.
-- **Never touches your password.** It authenticates with the lockfile — the
-  temporary credential Riot's own client writes for itself. It does not read
-  game memory and does not modify any Valorant file.
-- **Your history is yours, and it only grows.** Every match the tracker sees is
-  written to a local archive that is never pruned, so it outlives Riot's
-  43-match window. Matches known only to the third-party archive are copied in
-  as well, so the day that service shuts down, what you already had stays
-  readable. On a real account this took the archive from 45 matches to **746
-  across 27 acts**. See [Your archive](#your-archive-the-point-of-running-this-locally).
-- **Free where it counts, in agent select.** You know whether you are starting
-  on attack or defense while you are still picking, and you see every player's
-  rank and peak — two things the game keeps from you.
-- **Costs nothing to run.** ~65 MB of RAM and effectively no CPU (measured:
-  0.006% over 22 minutes). No overlay, no injection, no hook — your frame rate
-  is untouched.
-- **Simple on purpose.** One page, no menus, no login. Every card folds with
-  one button and the layout is remembered.
-- **Exact where it can be.** Wins, losses and win rate come from Riot's own
-  seasonal counter, so they are correct even for matches nobody can read
-  anymore.
-- **Honest where it cannot be.** k/d, ACS and headshot can only be computed on
-  matches actually read. When those are a minority of the act, the numbers are
-  shown dimmed with a tooltip saying how many matches they rest on.
-- **Multi-account.** Switch Riot account and the tracker follows, keeping each
-  account's archive separate.
-- **Survives being offline.** The bridge starts before the game, waits for it,
-  and reconnects on its own when you switch account or restart the client.
-- **No install, no telemetry, no account.**
+Measured, not claimed.
+
+| | |
+|---|---|
+| RAM | ~65 MB |
+| CPU, idle in menus | 0.0% |
+| CPU, average over 22 minutes | 0.006% of the machine |
+| Impact on your FPS | none |
+
+The tracker is a **separate program**. It does not overlay the game, does not inject anything into it, does not hook DirectX, and never reads or writes `valorant.exe`'s memory. It talks to the same local HTTP port the Riot client already runs for itself.
+
+Read it on a second monitor, or with alt-tab.
+
+---
+
+## What you get
+
+- ✅ Runs entirely on your own PC
+- ✅ No account, no login, no server
+- ✅ Free, with no premium tier
+- ✅ No ads, no telemetry
+- ✅ Attack or defense in agent select
+- ✅ Rank, peak and act stats of the whole lobby
+- ✅ A badge on anyone you have already played with or against
+- ✅ Your party and queue while you are still in the menus
+- ✅ Comp history that outlives Riot's ~43-match window
+- ✅ Your archive still works if HenrikDev goes down
+- ✅ No overlay, no injection, no FPS drop
 
 ---
 
@@ -349,61 +270,91 @@ PC means copying it by hand.
 
 Read this section. Some of these are permanent.
 
-- **Windows only.** The core would run anywhere, but the lockfile path, the
-  launchers and the packaging are Windows-specific.
-- **Riot only exposes ~43 recent competitive matches.** Anything older that the
-  tracker never saw, and that the third-party archive does not have, is gone
-  for good. There is no way around this.
-- **Which means you have to actually run it.** The archive is permanent, but it
-  can only keep what it saw. Play 60 matches without opening the tracker once
-  and the oldest 17 are lost before it ever gets a chance — see
-  [Your archive](#your-archive-the-point-of-running-this-locally) for the
-  arithmetic. Leaving it running while you play removes the problem entirely.
-- **The third-party archive is not complete either.** It is not Riot's, and it
-  misses matches. On a 138-match act it had 132. Expect k/d, ACS and headshot
-  to be very good estimates, not official counts.
-- **Party detection is impossible.** You cannot see who is duo/trio with whom
-  during a match. This was tested against the live client, not assumed:
-  pre-game exposes no party field, core-game exposes no party field,
-  `parties/v1/players` on another player's puuid returns **403**, and
-  `IsAssociated` is `true` for all ten players. The party ID only exists in
-  end-of-match details, when it is no longer useful.
-- **Peak RR of past acts cannot be recovered.** Riot only reports the peak
-  *tier* per act, not the RR. The tracker shows a peak RR only when it has
-  actually seen a match at that tier.
-- **No official Riot API is used, because none is available.** Riot does not
-  issue personal keys for Valorant, and production keys require an approved
-  professional project plus RSO login. This tracker uses the same read-only
-  endpoints every public tracker uses. They are unofficial and could change or
-  break without warning.
-- **One instance at a time.** A second copy will not start; it brings your
-  browser back to the one already running. This is deliberate — two copies
-  would overwrite each other's archive.
-- **Antivirus false positives.** Programs packaged with PyInstaller typically
-  trip 2–8 of 70 engines on VirusTotal with generic names like `Wacatac`. If
-  that bothers you, build it yourself with `costruisci.bat`.
-- **Rate limits are real.** Reading a whole act for ten players is a lot of
-  requests. The tracker caches aggressively and throttles itself, but hammering
-  refresh will get you temporary `429` responses from Riot.
-- **Reading other players costs time.** Averages for the lobby fill in
-  progressively over a few seconds to a few minutes, depending on how many
-  matches each player has. Partial results are saved as they arrive.
+**Data you cannot get, ever**
+
+- **Riot only exposes ~43 recent competitive matches.** Anything older that the tracker never saw, and that the third-party archive does not have, is gone for good. There is no way around this.
+- **Which means you have to actually run it.** Play 60 matches without opening it once and the oldest 17 are lost before it gets a chance.
+- **The third-party archive is not complete either.** It is not Riot's, and it misses matches. On a 138-match act it had 132. Expect k/d, ACS and headshot to be very good estimates, not official counts.
+- **Peak RR of past acts cannot be recovered.** Riot only reports the peak *tier* per act, not the RR. A peak RR appears only when the tracker has actually seen a match at that tier.
+- **"Played with before" starts empty and only counts ranked.** It is built from what the tracker itself recorded, so it has nothing to say about lobbies from before you installed it. Riot no longer serves the rosters of old matches, so it cannot be backfilled.
+
+**Things the client simply does not expose**
+
+- **Party detection inside a match is impossible.** You can see your own party in the menus, but not who is duo or trio with whom once the match starts. This was tested against the live client, not assumed: pre-game exposes no party field, core-game exposes no party field, `parties/v1/players` on another player's puuid returns **403**, and `IsAssociated` is `true` for all ten. The party ID only exists in end-of-match details, when it is no longer useful.
+- **No official Riot API is used, because none is available.** Riot does not issue personal keys for Valorant, and production keys require an approved professional project plus RSO login. This tracker uses the same read-only endpoints every public tracker uses. They are unofficial and could change or break without warning.
+
+**Platform and practical limits**
+
+- **Windows only.** The core would run anywhere, but the lockfile path, the launchers and the packaging are Windows-specific.
+- **PC only.** Every rank, peak and average comes from the PC competitive queue. Console has its own separate queue, which the tracker never reads.
+- **One instance at a time.** A second copy will not start; it brings your browser back to the one already running. Two copies would overwrite each other's archive.
+- **Antivirus false positives.** PyInstaller programs typically trip 2–8 of 70 engines on VirusTotal with generic names like `Wacatac`. If that bothers you, build it yourself with `costruisci.bat`.
+- **Rate limits are real.** Reading a whole act for ten players is a lot of requests. The tracker caches and throttles itself, but hammering refresh will get you temporary `429` responses from Riot.
+- **Reading other players costs time.** Lobby averages fill in progressively over a few seconds to a few minutes. Partial results are saved as they arrive.
 
 ---
 
-## Is this against the rules? Is it a virus?
+## FAQ
 
-It uses the same read-only endpoints as the trackers you already use on the
-web. It does not read game memory, does not inject anything, does not automate
-gameplay, and does not touch any Valorant file. That said, these endpoints are
-not a public Riot API and Riot makes no promises about them — use it knowing
-that.
+<details>
+<summary><b>Is this against Riot's rules? Will I get banned?</b></summary>
 
-As for the executable: you cannot verify an `.exe` someone handed you, and you
-should not pretend otherwise. That is exactly why the full source is here.
-Read `bridge.py`, or run `costruisci.bat` and use the file you built yourself.
-A hash only proves the file is the same one that left the sender — not that it
-is clean.
+It uses the same read-only endpoints as the trackers you already use on the web. It does not read game memory, does not inject anything, does not automate gameplay, and does not touch any Valorant file.
+
+That said, these endpoints are not a public Riot API and Riot makes no promises about them — use it knowing that.
+
+</details>
+
+<details>
+<summary><b>Is it a virus?</b></summary>
+
+You cannot verify an `.exe` someone handed you, and you should not pretend otherwise. That is exactly why the full source is here.
+
+Read `bridge.py`, or run `costruisci.bat` and use the file you built yourself. A hash only proves the file is the same one that left the sender — not that it is clean.
+
+</details>
+
+<details>
+<summary><b>Do I need the API key?</b></summary>
+
+No. Everything works without it. The key only widens how far back the tracker can see — for you and for the other players in your lobby.
+
+</details>
+
+<details>
+<summary><b>What happens if HenrikDev shuts down?</b></summary>
+
+Everything already in `matches.json` stays readable, including the matches that only came from there. The tracker falls back to Riot's own ~43-match window for new data.
+
+</details>
+
+<details>
+<summary><b>Will it drop my FPS?</b></summary>
+
+No. It is a separate program with no overlay and no hooks into the game. See [What it costs your PC](#what-it-costs-your-pc).
+
+</details>
+
+<details>
+<summary><b>Can I check it from my phone?</b></summary>
+
+No. It listens on `127.0.0.1` only — your own machine, nothing else on the network. That is the trade-off for having no server.
+
+</details>
+
+<details>
+<summary><b>Mac or Linux?</b></summary>
+
+Not supported. The core would run, but the lockfile path, the launchers and the packaging are Windows-specific. Valorant is Windows-only anyway.
+
+</details>
+
+<details>
+<summary><b>I closed the tab and it's still running.</b></summary>
+
+That is expected — the page is just its window. Reopen `http://127.0.0.1:7890`, then use the **CLOSE** button at the top right to stop it for real.
+
+</details>
 
 ---
 
@@ -417,20 +368,14 @@ Riot servers ──entitlements───►  pd / glz    ─┘      (aiohttp)  
 HenrikDev archive (optional, needs a key)  ───────────────┘
 ```
 
-`bridge.py` is a single-file aiohttp server. It authenticates against the local
-Riot client with the lockfile, gets an entitlements token, and reads from
-Riot's `pd` and `glz` endpoints. It pushes state to the page over a WebSocket,
-falling back to 2-second polling on clients that reject the WebSocket
-handshake. `index.html` is a single self-contained file with no external
-JavaScript.
+`bridge.py` is a single-file aiohttp server. It authenticates against the local Riot client with the lockfile, gets an entitlements token, and reads from Riot's `pd` and `glz` endpoints. It pushes state to the page over a WebSocket, falling back to 2-second polling on clients that reject the handshake.
+
+`index.html` is a single self-contained file with no external JavaScript.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright © 2026
-[DevHachiman](https://github.com/DevHachiman).
+MIT — see [LICENSE](LICENSE). Copyright © 2026 [DevHachiman](https://github.com/DevHachiman).
 
-VALORANT and Riot Games are trademarks or registered trademarks of Riot Games,
-Inc. This project is not affiliated with, endorsed by, or sponsored by Riot
-Games, and uses unofficial, read-only endpoints of the Riot client.
+VALORANT and Riot Games are trademarks or registered trademarks of Riot Games, Inc. This project is not affiliated with, endorsed by, or sponsored by Riot Games, and uses unofficial, read-only endpoints of the Riot client.
