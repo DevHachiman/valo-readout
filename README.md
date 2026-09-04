@@ -36,7 +36,7 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### While you play
 
-<img width="1336" height="1226" alt="Screenshot 2026-08-29 145909" src="https://github.com/user-attachments/assets/ff1b4c60-8b55-4693-bc9c-6f54726b136f" />
+<img width="1316" height="1100" alt="image" src="https://github.com/user-attachments/assets/88a1c667-ea4f-44a0-b566-3bd6ccaf5bfb" />
 
 | | |
 |---|---|
@@ -49,7 +49,7 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### Your own numbers
 
-<img width="1356" height="1178" alt="Screenshot 2026-08-29 145922" src="https://github.com/user-attachments/assets/14daf1e7-e719-4915-9194-f37740e8dbf6" />
+<img width="1335" height="1080" alt="image" src="https://github.com/user-attachments/assets/8f5bdb0f-c7c6-41da-822e-c242735d72aa" />
 
 - **Rank** — current rank and RR, peak rank with the act it was reached in, and peak RR.
 - **Act totals** — wins, losses, win rate, KDA, k/d, ACS, headshot, kills per round, best agent.
