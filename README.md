@@ -7,7 +7,7 @@ It reads your live match from the Riot client, shows who is in the lobby with th
 No account. No login. No server. It opens in your browser at `http://127.0.0.1:7890` and talks to nothing except Riot and, optionally, one free stats archive.
 
 ```
-Download the valo-readout.exe → →  double-click  →  play
+Download the valo-readout.exe →  double-click  →  play
 ```
 
 > [!IMPORTANT]
