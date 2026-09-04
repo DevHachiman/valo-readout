@@ -69,9 +69,8 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### Option 1 — Ready-made executable (easiest)
 
-1. Download `valo-readout.zip` from the **[Releases](../../releases)** page.
-2. Unzip it anywhere.
-3. Double-click `valo-readout.exe`.
+1. Download `valo-readout.exe` from the **[Releases](../../releases)** page.
+2. Double-click and play.
 
 Python is already inside the file; nothing gets installed on your system.
 
