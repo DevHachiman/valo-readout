@@ -42,6 +42,8 @@ MESSAGES = {
         "Encounters saved: %d matches, %d players",
     "Tolte %d lobby non ranked dagli incontri":
         "Dropped %d non-ranked lobbies from the encounters",
+    "Icone dei rank scaricate: %d":
+        "Rank icons downloaded: %d",
     "Tolte %d lobby mai finite (dodge o remake)":
         "Dropped %d lobbies that never finished (dodge or remake)",
     "Cache partite: %d gia' analizzate":
@@ -173,8 +175,8 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "72"
-APP_VERSION = "1.7"
+UI_VERSION = "73"
+APP_VERSION = "1.8"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -372,6 +374,7 @@ INSTANCE_LOCK = local_appdata() / "valo-readout" / "bridge.lock"
 PEEK_CACHE_MAX = 12000
 INCONTRI_MAX = 4000
 INCONTRI_ATTESA = 7 * 86400
+TIER_DIR = local_appdata() / "valo-readout" / "tiers"
 PEEK_ACT = -1
 
 
@@ -823,6 +826,7 @@ class State:
     error_en: str | None = None
     henrik: bool = False
     henrik_key: str = ""
+    tier_icons: bool = False
     mock: bool = False
     account: dict[str, Any] = field(default_factory=dict)
     live: dict[str, Any] = field(default_factory=dict)
@@ -841,6 +845,7 @@ class State:
             "error": self.error,
             "errorEn": self.error_en or self.error,
             "henrik": self.henrik,
+            "tierIcons": self.tier_icons,
             "henrikKey": self.henrik_key,
             "mock": self.mock,
             "account": self.account,
@@ -1149,7 +1154,38 @@ class Tracker:
         await self.push()
 
 
+    async def scarica_icone(self) -> None:
+        if TIER_DIR.is_dir() and any(TIER_DIR.glob("*.png")):
+            self.state.tier_icons = True
+            return
+        async with self.riot.session.get(
+            "https://valorant-api.com/v1/competitivetiers"
+        ) as r:
+            d = await r.json()
+        TIER_DIR.mkdir(parents=True, exist_ok=True)
+        presi = 0
+        for t in d["data"][-1]["tiers"]:
+            url = t.get("smallIcon")
+            if not url:
+                continue
+            meta = TIER_DIR / f"{int(t['tier'])}.png"
+            if meta.exists():
+                continue
+            async with self.riot.session.get(url) as r:
+                if r.status != 200:
+                    continue
+                dati = await r.read()
+            if len(dati) > 512 * 1024:
+                continue
+            meta.write_bytes(dati)
+            presi += 1
+        if presi:
+            LOG.info("Icone dei rank scaricate: %d", presi)
+        self.state.tier_icons = any(TIER_DIR.glob("*.png"))
+
     async def load_content(self) -> None:
+        with contextlib.suppress(Exception):
+            await self.scarica_icone()
         with contextlib.suppress(Exception):
             async with self.riot.session.get(
                 "https://valorant-api.com/v1/agents?isPlayableCharacter=true"
@@ -2747,6 +2783,7 @@ def mock_state() -> State:
         "peakTier": 27, "peakTierName": "Radiant", "peakSeason": "Episodio 7 // Act 3",
         "actWins": 34, "actGames": 61, "maxTier": 27,
     }
+    s.tier_icons = TIER_DIR.is_dir() and any(TIER_DIR.glob("*.png"))
     s.matches = rows
     s.recent = Tracker._aggregate(rows)
     s.updated_at = time.time()
@@ -2860,6 +2897,10 @@ def build_app(tracker: Tracker,
     app.router.add_get("/ws", ws_handler)
     if WEB_DIR.is_dir():
         app.router.add_static("/static", WEB_DIR)
+    with contextlib.suppress(OSError):
+        TIER_DIR.mkdir(parents=True, exist_ok=True)
+    if TIER_DIR.is_dir():
+        app.router.add_static("/tier", TIER_DIR)
     return app
 
 
