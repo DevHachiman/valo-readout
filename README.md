@@ -36,7 +36,7 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### While you play
 
-<img width="1316" height="1100" alt="image" src="https://github.com/user-attachments/assets/88a1c667-ea4f-44a0-b566-3bd6ccaf5bfb" />
+<img width="1307" height="1242" alt="image" src="https://github.com/user-attachments/assets/3e33a0dd-27c8-4b17-91f3-22f8683bffaf" />
 
 | | |
 |---|---|
