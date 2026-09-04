@@ -38,6 +38,12 @@ LOG_LINES: "collections.deque[dict[str, Any]]" = collections.deque(maxlen=300)
 MESSAGES = {
     "Collegato come %s#%s  region=%s shard=%s build=%s":
         "Connected as %s#%s  region=%s shard=%s build=%s",
+    "Incontri salvati: %d partite, %d giocatori":
+        "Encounters saved: %d matches, %d players",
+    "Tolte %d lobby non ranked dagli incontri":
+        "Dropped %d non-ranked lobbies from the encounters",
+    "Tolte %d lobby mai finite (dodge o remake)":
+        "Dropped %d lobbies that never finished (dodge or remake)",
     "Cache partite: %d gia' analizzate":
         "Match cache: %d already analysed",
     "Cache lobby: %d partite gia' lette":
@@ -58,6 +64,8 @@ MESSAGES = {
         "Refreshing stats (%s)",
     "Aggiornamento statistiche fallito: %s":
         "Stats refresh failed: %s",
+    "Riot ci frena, riprovo fra %.0fs (%d di 3)":
+        "Riot is throttling us, retrying in %.0fs (%d of 3)",
     "La presenza non contiene sessionLoopState. Passo agli endpoint "
     "sul mio puuid per capire se sono in partita.":
         "Presence carries no sessionLoopState. Falling back to the endpoints "
@@ -165,8 +173,8 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "71"
-APP_VERSION = "1.6"
+UI_VERSION = "72"
+APP_VERSION = "1.7"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -363,7 +371,15 @@ PEEK_CACHE_FILE = local_appdata() / "valo-readout" / "peeked.json"
 INSTANCE_LOCK = local_appdata() / "valo-readout" / "bridge.lock"
 PEEK_CACHE_MAX = 12000
 INCONTRI_MAX = 4000
+INCONTRI_ATTESA = 7 * 86400
 PEEK_ACT = -1
+
+
+def attesa_429(exc: aiohttp.ClientResponseError, tentativo: int) -> float:
+    pausa = 2.0 * tentativo
+    with contextlib.suppress(Exception):
+        pausa = float((exc.headers or {}).get("Retry-After") or pausa)
+    return min(max(pausa, 1.0), 30.0)
 
 
 def short_error(exc: BaseException) -> str:
@@ -1225,6 +1241,8 @@ class Tracker:
         for mid, lob in self._incontri.items():
             if str(lob.get("queue") or "").lower() != CODA_INCONTRI:
                 continue
+            if lob.get("won") is None:
+                continue
             for pu, alleato in (lob.get("p") or {}).items():
                 indice.setdefault(pu, []).append({
                     "matchId": mid,
@@ -1277,6 +1295,14 @@ class Tracker:
             if isinstance(riga, dict) and riga.get("won") is not None:
                 lob["won"] = bool(riga["won"])
                 cambiato = True
+        limite = (time.time() - INCONTRI_ATTESA) * 1000
+        scadute = [mid for mid, lob in self._incontri.items()
+                   if lob.get("won") is None and (lob.get("at") or 0) < limite]
+        for mid in scadute:
+            self._incontri.pop(mid, None)
+        if scadute:
+            LOG.info("Tolte %d lobby mai finite (dodge o remake)", len(scadute))
+            cambiato = True
         if cambiato:
             self._rifai_indice()
             self._save_row_cache()
@@ -1615,12 +1641,15 @@ class Tracker:
         my_team = me.get("teamId")
         won = None
         my_score = their_score = None
-        for team in det.get("teams", []):
+        squadre = det.get("teams") or []
+        for team in squadre:
             if team.get("teamId") == my_team:
                 won = bool(team.get("won"))
                 my_score = team.get("roundsWon")
             else:
                 their_score = team.get("roundsWon")
+        if not any(t.get("won") for t in squadre):
+            won = None
 
         info = det.get("matchInfo") or {}
         return {
@@ -1815,14 +1844,27 @@ class Tracker:
                     self.state.bridge = "connected"
                     self.state.error = None
                     await self.push()
-            for tentativo in (1, 2):
+            frenate = 0
+            regione_riprovata = False
+            while True:
                 try:
                     await self.refresh_rank()
                     await self.refresh_matches()
                     self.state.error = None
                     break
+                except asyncio.CancelledError:
+                    raise
                 except Exception as exc:
-                    if tentativo == 1 and await self.riot.redetect_region():
+                    if (isinstance(exc, aiohttp.ClientResponseError)
+                            and exc.status == 429 and frenate < 3):
+                        frenate += 1
+                        pausa = attesa_429(exc, frenate)
+                        LOG.info("Riot ci frena, riprovo fra %.0fs (%d di 3)",
+                                 pausa, frenate)
+                        await asyncio.sleep(pausa)
+                        continue
+                    if not regione_riprovata and await self.riot.redetect_region():
+                        regione_riprovata = True
                         self.state.account["region"] = self.riot.region
                         continue
                     LOG.warning("Aggiornamento statistiche fallito: %s", exc)
@@ -2333,10 +2375,7 @@ class Tracker:
                         LOG.debug("Partita %s non letta: %s",
                                   match_id[:8], short_error(exc))
                         return {}
-                    pause = 2.0 * (attempt + 1)
-                    with contextlib.suppress(Exception):
-                        pause = float((exc.headers or {}).get("Retry-After") or pause)
-                    pause = min(max(pause, 1.0), 30.0)
+                    pause = attesa_429(exc, attempt + 1)
                     self._peek_cooldown = max(self._peek_cooldown, time.time() + pause)
                     self._peek_429 += 1
                 except Exception as exc:
@@ -2350,6 +2389,7 @@ class Tracker:
             rows: dict[str, Any] = {
                 "_season": str(info.get("seasonId", "")).lower(),
             }
+            deciso = any(t.get("won") for t in teams.values())
             for p in (det or {}).get("players", []):
                 st = p.get("stats") or {}
                 team = teams.get(p.get("teamId")) or {}
@@ -2359,7 +2399,7 @@ class Tracker:
                     "assists": st.get("assists", 0),
                     "score": st.get("score", 0),
                     "rounds": st.get("roundsPlayed", 0),
-                    "won": team.get("won"),
+                    "won": team.get("won") if deciso else None,
                 }
             self._peeked[match_id] = rows
             return rows
@@ -2629,13 +2669,13 @@ def mock_state() -> State:
         "map": "Ascent", "partySize": 2, "provisioning": "Matchmaking",
         "score": [8, 5], "roundsPlayed": 13,
     }
-    def mock_player(name, agent, ally, tier, me=False):
+    def mock_player(name, agent, ally, tier, me=False, rr=None):
         peak = min(tier + rng.randint(0, 4), 27)
         return {
             "puuid": f"mock-{name}", "me": me, "ally": ally, "agent": agent,
             "locked": True, "incognito": False, "level": rng.randint(40, 380),
             "name": name, "tier": tier, "tierName": tier_name(tier),
-            "rr": rng.randint(0, 99), "stale": False,
+            "rr": rng.randint(0, 99) if rr is None else rr, "stale": False,
             "peakTier": peak, "peakTierName": tier_name(peak),
             "actGames": rng.randint(0, 180),
             "met": rng.choice([None, None, None, {
@@ -2688,7 +2728,7 @@ def mock_state() -> State:
         "map": "Ascent", "queue": "Competitive", "queueId": "competitive",
         "ffa": False, "enemiesHidden": False, "side": "attacco",
         "allies": [
-            mock_player("Esempio#EUW", "Jett", True, 19, me=True),
+            mock_player("Esempio#EUW", "Jett", True, 27, me=True, rr=431),
             mock_player("Vetta#IT1", "Omen", True, 24),
             mock_player("Corvo#900", "Killjoy", True, 19),
             mock_player("Nadir#EUW", "Sova", True, 18),
@@ -2703,8 +2743,8 @@ def mock_state() -> State:
         ],
     }
     s.rank = {
-        "tier": 19, "tierName": "Diamond 2", "rr": 62,
-        "peakTier": 22, "peakTierName": "Ascendant 2", "peakSeason": "Episodio 7 // Act 3",
+        "tier": 27, "tierName": "Radiant", "rr": 431,
+        "peakTier": 27, "peakTierName": "Radiant", "peakSeason": "Episodio 7 // Act 3",
         "actWins": 34, "actGames": 61, "maxTier": 27,
     }
     s.matches = rows
@@ -2770,6 +2810,8 @@ def build_app(tracker: Tracker,
         LOG.info("Dashboard collegato (%d attivi)", len(tracker.clients))
         try:
             await ws.send_str(json.dumps(tracker.state.to_json()))
+            if tracker.state.error:
+                asyncio.create_task(tracker.refresh_stats("riprovo dopo un errore"))
             async for msg in ws:
                 if msg.type == aiohttp.WSMsgType.TEXT and msg.data == "refresh":
                     asyncio.create_task(tracker.refresh_stats("dal dashboard"))
