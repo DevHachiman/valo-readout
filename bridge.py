@@ -176,7 +176,7 @@ HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
 UI_VERSION = "73"
-APP_VERSION = "1.8"
+APP_VERSION = "1.9"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -907,6 +907,7 @@ class Tracker:
         self._roster_match = ""
         self._roster_loop = ""
         self._party_id = ""
+        self._presence_party = ""
         self._roster_at = 0.0
         self._match_id = ""
         self._match_loop = ""
@@ -1922,6 +1923,9 @@ class Tracker:
             return False
 
         dentro = data.get("matchPresenceData") or {}
+        self._presence_party = str(
+            data.get("partyId")
+            or (data.get("partyPresenceData") or {}).get("partyId") or "")
 
         def campo(nome, default=""):
             v = data.get(nome)
@@ -2165,12 +2169,10 @@ class Tracker:
                     self._fill_stats([p["puuid"] for p in players]))
 
     async def mostra_party(self) -> bool:
+        pid = self._presence_party
+        if not pid:
+            return False
         try:
-            mio = await self.riot.remote_get(
-                f"{self.riot.glz}/parties/v1/players/{self.riot.puuid}")
-            pid = str((mio or {}).get("CurrentPartyID") or "")
-            if not pid:
-                return False
             party = await self.riot.remote_get(
                 f"{self.riot.glz}/parties/v1/parties/{pid}")
         except Exception as exc:
