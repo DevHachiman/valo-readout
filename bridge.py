@@ -175,8 +175,8 @@ class UILogHandler(logging.Handler):
 HERE = Path(__file__).resolve().parent
 WEB_DIR = HERE / "web"
 
-UI_VERSION = "73"
-APP_VERSION = "1.9"
+UI_VERSION = "74"
+APP_VERSION = "2.0"
 
 RELEASE_API = ("https://api.github.com/repos/DevHachiman/valo-readout/releases/latest")
 RELEASE_PAGE = "https://github.com/DevHachiman/valo-readout/releases/latest"
@@ -411,6 +411,11 @@ def side_label(team: str, rounds_played: int | None,
     if rounds_played >= meta:
         parte = "difesa" if parte == "attacco" else "attacco"
     return parte
+
+
+def server_label(pod: str) -> str:
+    m = re.search(r"-gp-([a-z-]+?)(?:-awsedge)?-\d+$", str(pod).lower())
+    return m.group(1).replace("-", " ").title() if m else ""
 
 
 def iso_ms(value: Any) -> int:
@@ -837,6 +842,7 @@ class State:
     update: dict[str, Any] = field(default_factory=dict)
     matches: list[dict[str, Any]] = field(default_factory=list)
     acts: list[dict[str, Any]] = field(default_factory=list)
+    map_art: dict[str, str] = field(default_factory=dict)
     updated_at: float = 0.0
 
     def to_json(self) -> dict[str, Any]:
@@ -858,6 +864,7 @@ class State:
             "appVersion": APP_VERSION,
             "matches": self.matches,
             "acts": self.acts,
+            "mapArt": self.map_art,
             "updatedAt": self.updated_at,
             "log": list(LOG_LINES),
         }
@@ -895,6 +902,8 @@ class Tracker:
         self._seasons: dict[str, str] = {}
         self._episodes: dict[str, str] = {}
         self._active_seasons: set[str] = set()
+        self._act_start: dict[str, str] = {}
+        self._prev_act = ""
         self._row_cache: dict[str, dict[str, Any]] = {}
         self._act_info: dict[str, dict[str, int]] = {}
         self._act_saved: dict[str, dict[str, int]] = {}
@@ -1208,6 +1217,8 @@ class Tracker:
                 for m in d["data"]:
                     if m.get("mapUrl"):
                         self._maps[m["mapUrl"].lower()] = m["displayName"]
+                    if m.get("listViewIcon"):
+                        self.state.map_art[m["displayName"]] = m["listViewIcon"]
         with contextlib.suppress(Exception):
             content = await self.riot.remote_get(
                 f"{self.riot.shared}/content-service/v3/content"
@@ -1220,8 +1231,13 @@ class Tracker:
                     self._active_seasons.add(sid)
                 if str(s.get("Type") or "").lower() == "episode":
                     episodio = s.get("Name", "")
-                elif episodio:
-                    self._episodes[sid] = episodio
+                else:
+                    self._act_start[sid] = s.get("StartTime") or ""
+                    if episodio:
+                        self._episodes[sid] = episodio
+            ordine = sorted(self._act_start, key=self._act_start.get)
+            attivi = [i for i, sid in enumerate(ordine) if sid in self._active_seasons]
+            self._prev_act = ordine[attivi[0] - 1] if attivi and attivi[0] else ""
         with contextlib.suppress(Exception):
             async with self.riot.session.get(
                 "https://valorant-api.com/v1/seasons"
@@ -1399,7 +1415,9 @@ class Tracker:
                 json.dumps({"v": ROW_CACHE_VERSION, "accounts": tutti}),
                 encoding="utf-8")
 
-    def queue_label(self, queue: str) -> str:
+    def queue_label(self, queue: str, flow: str = "") -> str:
+        if str(flow or "").lower() == "shootingrange":
+            return "Practice"
         chiave = str(queue or "").lower()
         return (self._queues.get(chiave)
                 or QUEUE_LABELS.get(chiave, queue or "—"))
@@ -1606,11 +1624,6 @@ class Tracker:
         self._save_row_cache()
         self.state.acts = self._by_act(tutte or [], rows, info, campioni)
 
-        globale = self.state.rank.get("peakTier")
-        for a in self.state.acts:
-            if a["peakTier"] == globale and a.get("peakRR") is not None:
-                self.state.rank["peakRR"] = a["peakRR"]
-                break
         n_arch = len(act_rows or [])
         if act_rows:
             unione = {r["matchId"]: r for r in act_rows if r.get("matchId")}
@@ -1721,20 +1734,7 @@ class Tracker:
         decided = sum(1 for r in rows if r["won"] is not None) or 1
         combat = sum(r.get("combatScore", r["acs"] * r["rounds"]) for r in rows)
 
-        by_agent: dict[str, list[dict[str, Any]]] = {}
-        for r in rows:
-            by_agent.setdefault(r["agent"], []).append(r)
-        best_agent = ""
-        best_kda = -1.0
-        for agent, group in by_agent.items():
-            if len(group) < 2:
-                continue
-            gk = sum(x["kills"] for x in group)
-            ga = sum(x["assists"] for x in group)
-            gd = sum(x["deaths"] for x in group) or 1
-            kda = (gk + ga) / gd
-            if kda > best_kda:
-                best_agent, best_kda = agent, kda
+        best_agent, best_kda = Tracker._best_agent(rows, 2)
 
         act_games = (rank or {}).get("actGames") or 0
         act_wins = (rank or {}).get("actWins") or 0
@@ -1750,7 +1750,7 @@ class Tracker:
         for r in rows:
             m = by_map.setdefault(r.get("map") or "—", {
                 "games": 0, "wins": 0, "losses": 0,
-                "k": 0, "d": 0, "combat": 0, "rounds": 0,
+                "k": 0, "d": 0, "a": 0, "combat": 0, "rounds": 0,
                 "head": 0, "shots": 0,
             })
             m["games"] += 1
@@ -1760,6 +1760,7 @@ class Tracker:
                 m["losses"] += 1
             m["k"] += r["kills"]
             m["d"] += r["deaths"]
+            m["a"] += r["assists"]
             m["combat"] += r.get("combatScore", r["acs"] * r["rounds"])
             m["rounds"] += r["rounds"]
             colpi = r.get("shots") or {}
@@ -1767,18 +1768,25 @@ class Tracker:
             m["shots"] += (colpi.get("head", 0) + colpi.get("body", 0)
                            + colpi.get("leg", 0))
 
-        maps = [{
-            "map": name,
-            "games": m["games"],
-            "wins": m["wins"],
-            "losses": m["losses"],
-            "winRate": round(m["wins"] / (m["wins"] + m["losses"]) * 100)
-                       if (m["wins"] + m["losses"]) else None,
-            "kd": round(m["k"] / (m["d"] or 1), 2),
-            "acs": round(m["combat"] / m["rounds"]) if m["rounds"] else None,
-            "hs": round(m["head"] / m["shots"] * 100, 1) if m["shots"] else None,
-        } for name, m in by_map.items()]
+        maps = []
+        for name, m in by_map.items():
+            agente, _ = Tracker._best_agent(
+                [r for r in rows if (r.get("map") or "—") == name], 1)
+            maps.append({
+                "map": name,
+                "games": m["games"],
+                "wins": m["wins"],
+                "losses": m["losses"],
+                "winRate": round(m["wins"] / (m["wins"] + m["losses"]) * 100)
+                           if (m["wins"] + m["losses"]) else None,
+                "kd": round(m["k"] / (m["d"] or 1), 2),
+                "kda": round((m["k"] + m["a"]) / (m["d"] or 1), 2),
+                "acs": round(m["combat"] / m["rounds"]) if m["rounds"] else None,
+                "hs": round(m["head"] / m["shots"] * 100, 1) if m["shots"] else None,
+                "bestAgent": agente,
+            })
         maps.sort(key=lambda x: (-(x["winRate"] or 0), -x["games"], x["map"]))
+        best_map = next((x for x in maps if x["wins"] + x["losses"] >= 3), None)
 
         return {
             "games": len(rows),
@@ -1796,8 +1804,28 @@ class Tracker:
             "losses": shown_l,
             "killsPerRound": round(k / rounds, 2),
             "bestAgent": best_agent,
-            "bestAgentKda": round(best_kda, 2) if best_agent else None,
+            "bestAgentKda": best_kda,
+            "bestMap": best_map["map"] if best_map else "",
+            "bestMapWr": best_map["winRate"] if best_map else None,
         }
+
+    @staticmethod
+    def _best_agent(rows: list[dict[str, Any]],
+                    minimo: int) -> tuple[str, float | None]:
+        by_agent: dict[str, list[dict[str, Any]]] = {}
+        for r in rows:
+            by_agent.setdefault(r["agent"], []).append(r)
+        best_agent, best_kda = "", -1.0
+        for agent, group in by_agent.items():
+            if len(group) < minimo:
+                continue
+            gk = sum(x["kills"] for x in group)
+            ga = sum(x["assists"] for x in group)
+            gd = sum(x["deaths"] for x in group) or 1
+            kda = (gk + ga) / gd
+            if kda > best_kda:
+                best_agent, best_kda = agent, kda
+        return best_agent, round(best_kda, 2) if best_agent else None
 
     @staticmethod
     def _peak_rr(sid: str, picco: int,
@@ -1951,7 +1979,7 @@ class Tracker:
         self.state.live = {
             "loopState": loop,
             "loopLabel": STATE_LABELS.get(loop, loop or "—"),
-            "queue": self.queue_label(queue),
+            "queue": self.queue_label(queue, campo("provisioningFlow")),
             "map": self.map_label(campo("matchMap")),
             "partySize": campo("partySize", None),
             "provisioning": campo("provisioningFlow"),
@@ -2236,16 +2264,18 @@ class Tracker:
         players = [self._player_row(p, p.get("TeamID") == my_team, True)
                    for p in rows if not p.get("IsCoach")]
         queue = (det.get("MatchmakingData") or {}).get("QueueID") or ""
+        flow = det.get("ProvisioningFlow") or ""
+        squadra = "" if queue in FFA_QUEUES or flow == "ShootingRange" else my_team
         punteggio = (self.state.live or {}).get("score") or []
         giocati = sum(x for x in punteggio if isinstance(x, int)) if punteggio else None
         return players, {
             "map": self.map_label(det.get("MapID", "")),
-            "queue": self.queue_label(queue),
+            "queue": self.queue_label(queue, flow),
             "queueId": queue,
             "ffa": queue in FFA_QUEUES,
-            "myTeam": "" if queue in FFA_QUEUES else my_team,
-            "side": ("" if queue in FFA_QUEUES
-                     else side_label(my_team, giocati, queue)),
+            "myTeam": squadra,
+            "side": side_label(squadra, giocati, queue),
+            "server": server_label(det.get("GamePodID", "")),
             "enemiesHidden": False,
         }
 
@@ -2270,6 +2300,7 @@ class Tracker:
             "ffa": ffa,
             "side": "" if ffa else side_label(
                 (det.get("AllyTeam") or {}).get("TeamID", ""), None, queue),
+            "server": server_label(det.get("GamePodID", "")),
             "enemiesHidden": not ffa,
         }
 
@@ -2293,6 +2324,10 @@ class Tracker:
             "peakTier": None,
             "peakTierName": "—",
             "peakAct": "",
+            "lastTier": None,
+            "lastTierName": "—",
+            "lastRR": None,
+            "lastPlayed": None,
             "stats": None,
         }
 
@@ -2319,6 +2354,11 @@ class Tracker:
             p["peakTier"] = peak
             p["peakTierName"] = tier_name(peak) if peak else "—"
             p["peakAct"] = info.get("peakAct", "")
+            last = info.get("lastTier")
+            p["lastTier"] = last
+            p["lastTierName"] = tier_name(last) if last else "—"
+            p["lastRR"] = info.get("lastRR")
+            p["lastPlayed"] = info.get("lastPlayed")
             p["actGames"] = info.get("actGames")
             p["stats"] = self._pstats.get(p["puuid"]) if self.peek else {}
         self._segna_esiti()
@@ -2503,13 +2543,19 @@ class Tracker:
                     current = True
                     break
 
-        peak, peak_sid = 0, ""
+        migliore, peak_sid = (0, 0, ""), ""
+        scorso: dict[str, Any] = {}
         for sid, entry in seasons.items():
-            wins_by_tier = entry.get("WinsByTier") or {}
-            best = max([int(entry.get("CompetitiveTier") or 0)]
-                       + [int(k) for k in wins_by_tier])
-            if best > peak:
-                peak, peak_sid = best, sid
+            vittorie = entry.get("WinsByTier") or {}
+            best = max([int(entry.get("CompetitiveTier") or 0)] + [int(k) for k in vittorie])
+            chiave = (best, int(vittorie.get(str(best)) or 0),
+                      self._act_start.get(sid.lower(), ""))
+            if best and chiave > migliore:
+                migliore, peak_sid = chiave, sid
+            if sid.lower() == self._prev_act and entry.get("NumberOfGames"):
+                scorso = entry
+        peak = migliore[0]
+        last = int(scorso.get("CompetitiveTier") or 0)
 
         act_games = sum(e.get("NumberOfGames", 0) for sid, e in seasons.items()
                         if sid.lower() in self._active_seasons
@@ -2521,6 +2567,9 @@ class Tracker:
             "current": current,
             "peak": peak or None,
             "peakAct": self.season_name(peak_sid) if peak_sid else "",
+            "lastTier": last or None,
+            "lastRR": scorso.get("RankedRating") if last else None,
+            "lastPlayed": bool(scorso) if self._prev_act else None,
             "actGames": act_games,
         }
 
@@ -2715,6 +2764,8 @@ def mock_state() -> State:
             "name": name, "tier": tier, "tierName": tier_name(tier),
             "rr": rng.randint(0, 99) if rr is None else rr, "stale": False,
             "peakTier": peak, "peakTierName": tier_name(peak),
+            "lastTier": max(tier - 1, 3), "lastTierName": tier_name(max(tier - 1, 3)),
+            "lastRR": rng.randint(0, 99), "lastPlayed": True,
             "actGames": rng.randint(0, 180),
             "met": rng.choice([None, None, None, {
                 "list": [
@@ -2765,6 +2816,7 @@ def mock_state() -> State:
         "matchId": "mock-live", "loop": "INGAME",
         "map": "Ascent", "queue": "Competitive", "queueId": "competitive",
         "ffa": False, "enemiesHidden": False, "side": "attacco",
+        "server": "Frankfurt",
         "allies": [
             mock_player("Esempio#EUW", "Jett", True, 27, me=True, rr=431),
             mock_player("Vetta#IT1", "Omen", True, 24),

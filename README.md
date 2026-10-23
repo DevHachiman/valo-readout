@@ -38,30 +38,32 @@ Download the valo-readout.exe →  double-click  →  play
 
 <img width="1307" height="1242" alt="image" src="https://github.com/user-attachments/assets/3e33a0dd-27c8-4b17-91f3-22f8683bffaf" />
 
-| | |
+| feature | what it does |
 |---|---|
-| **Your side, in agent select** | Attack or defense, before the match loads. The game does not tell you until you are already on the map. Colour coded like the state pill: **red for attack, cyan for defense**. |
-| **The full lobby** | Both teams: agent, name, level, current rank, **peak rank**, competitive games this act, and per-player k/d, ACS, headshot and win rate — the rank of every player, which the in-game scoreboard never shows you. |
-| **People you've met before** | Anyone you have played with gets a badge. Click it and a box opens in place, listing your last games together: when, the map, the result, and whether they were with you or against you. Ranked only. |
+| **Your side, in agent select** | Attack or defense, before the match loads. The game does not tell you until you are already on the map. Colour coded in the top bar: **red for attack, cyan for defense**. |
+| **The full lobby** | Both teams: agent, name, level, current rank, **last act's rank**, **peak rank**, competitive games this act, and per-player k/d, ACS, headshot and win rate — the rank of every player, which the in-game scoreboard never shows you. Players who hide their name show up as *Anonymous*. |
+| **People you've met before** | Anyone you have played with gets a badge. Click it and a box opens in place, listing your last games together: date and time, the map, the result, and whether they were with you or against you. Ranked only. |
 | **Your party in the menus** | Who is in the lobby and which queue you are searching, before the match even starts. |
 | **Copy button** | Turns the lobby into plain text you can paste anywhere. |
-| **Match state** | Queue and map at a glance. |
+| **Match state** | Game state, queue, map and the **server** the match is on (Frankfurt, Paris, London…) in the top bar. |
+| **After the match** | The lobby stays on screen for 15 seconds with a countdown, then clears. |
 
 ### Your own numbers
 
 <img width="1335" height="1080" alt="image" src="https://github.com/user-attachments/assets/8f5bdb0f-c7c6-41da-822e-c242735d72aa" />
 
-- **Rank** — current rank and RR, peak rank with the act it was reached in, and peak RR.
-- **Act totals** — wins, losses, win rate, KDA, k/d, ACS, headshot, kills per round, best agent.
-- **Recent matches** — with the RR change of each game.
-- **Per map** — win rate, k/d, ACS, headshot.
+- **Rank** — current rank with its icon and an RR bar, peak rank with the act it was reached in.
+- **Act totals** — KDA, k/d, ACS, headshot, win rate, wins and losses, kills per round, plus your **top agent** and **best map**.
+- **Recent matches** — won or lost, map, agent, kills, deaths, assists, k/d, KDA, ACS, headshot and the RR change of each game, with the average of the list.
+- **Per map** — win rate, wins, losses, k/d, KDA, ACS, headshot and the agent with your best KDA there.
 - **Per act** — a table going back as far as your archive reaches, with the peak rank of each act.
 
 ### The interface
 
 - **One page.** No menus, no tabs, no settings screen, no login.
-- **Every block folds.** Each card has a **−** button, and the layout is remembered for next time.
-- **Colours mean one thing each.** Green is a win, red is a loss. A dimmed number means *"computed on fewer matches than the act actually contains"*, with a tooltip saying how many.
+- **Every section folds.** Click its title, and the layout is remembered for next time.
+- **The rank card wears your rank's colour.** Maps show their own artwork in the tables.
+- **Colours mean one thing each.** Green is a win or a good number, red is a loss or a bad one. A dimmed number means *"computed on fewer matches than the act actually contains"*, with a tooltip saying how many.
 
 ---
 
@@ -135,7 +137,7 @@ The check happens **only while the tracker is open**. Closed, it does nothing.
 
 ### Closing it properly
 
-Use the **CLOSE** button at the top right.
+Use the **QUIT** button at the top right.
 
 Closing the browser tab does *not* stop it — the tracker is a program and the page is just its window. Reopen `http://127.0.0.1:7890` to get it back.
 
@@ -236,7 +238,7 @@ It sits deliberately outside OneDrive, so moving to a new PC means copying it by
 
 Measured, not claimed.
 
-| | |
+| what | measured |
 |---|---|
 | RAM | ~65 MB |
 | CPU, idle in menus | 0.0% |
@@ -256,8 +258,9 @@ Read it on a second monitor, or with alt-tab.
 - ✅ Free, with no premium tier
 - ✅ No ads, no telemetry
 - ✅ Attack or defense in agent select
-- ✅ Rank, peak and act stats of the whole lobby
+- ✅ Rank, last act's rank, peak and act stats of the whole lobby
 - ✅ A badge on anyone you have already played with or against
+- ✅ The server your match is on
 - ✅ Your party and queue while you are still in the menus
 - ✅ Comp history that outlives Riot's ~43-match window
 - ✅ Your archive still works if HenrikDev goes down
@@ -274,7 +277,7 @@ Read this section. Some of these are permanent.
 - **Riot only exposes ~43 recent competitive matches.** Anything older that the tracker never saw, and that the third-party archive does not have, is gone for good. There is no way around this.
 - **Which means you have to actually run it.** Play 60 matches without opening it once and the oldest 17 are lost before it gets a chance.
 - **The third-party archive is not complete either.** It is not Riot's, and it misses matches. On a 138-match act it had 132. Expect k/d, ACS and headshot to be very good estimates, not official counts.
-- **Peak RR of past acts cannot be recovered.** Riot only reports the peak *tier* per act, not the RR. A peak RR appears only when the tracker has actually seen a match at that tier.
+- **Peak RR of past acts cannot be recovered.** Riot only reports the peak *tier* per act, not the RR, and hands out just your last ~60 RR updates. So the peak shows the highest tier only, without RR; if you reached it in several acts, the act shown is an estimate: the one where you won the most games at that tier.
 - **"Played with before" starts empty and only counts ranked.** It is built from what the tracker itself recorded, so it has nothing to say about lobbies from before you installed it. Riot no longer serves the rosters of old matches, so it cannot be backfilled.
 
 **Things the client simply does not expose**
@@ -351,7 +354,7 @@ Not supported. The core would run, but the lockfile path, the launchers and the 
 <details>
 <summary><b>I closed the tab and it's still running.</b></summary>
 
-That is expected — the page is just its window. Reopen `http://127.0.0.1:7890`, then use the **CLOSE** button at the top right to stop it for real.
+That is expected — the page is just its window. Reopen `http://127.0.0.1:7890`, then use the **QUIT** button at the top right to stop it for real.
 
 </details>
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="valo-ui" content="73">
+<meta name="valo-ui" content="74">
 <title>VALO-READOUT</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20256%20256'><rect%20width='256'%20height='256'%20rx='46'%20fill='%23111a1f'/><g%20fill='%23f5a63c'><rect%20x='104'%20y='20'%20width='48'%20height='66'%20rx='9'/><rect%20x='104'%20y='170'%20width='48'%20height='66'%20rx='9'/><rect%20x='20'%20y='104'%20width='66'%20height='48'%20rx='9'/><rect%20x='170'%20y='104'%20width='66'%20height='48'%20rx='9'/><circle%20cx='128'%20cy='128'%20r='27'/></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,35 +56,43 @@ body{
 }
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"zero"}
 
-.shell{max-width:1320px;margin:0 auto;padding:0 24px 64px;min-height:100%}
+.shell{max-width:1400px;margin:0 auto;padding:0 24px 64px;min-height:100%}
 
 .top{
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:20px 0 15px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin-top:18px;padding:10px 10px 10px 18px;
+  background:var(--panel);border:1px solid var(--hair);border-left:2px solid var(--signal);
 }
 
-.actions{display:flex;align-items:center;gap:7px;flex:none}
-
-.brand{display:flex;align-items:center;gap:10px;flex:none;margin-right:8px}
-.mark{width:22px;height:22px;flex:none;display:block}
-.wordmark{font-weight:700;font-size:16px;letter-spacing:.2em;color:var(--ivory)}
+.brand{
+  display:flex;align-items:center;gap:12px;flex:none;
+  padding-right:20px;margin-right:4px;border-right:1px solid var(--rule);
+}
+.mark{
+  width:26px;height:26px;flex:none;display:block;
+  filter:drop-shadow(0 0 10px color-mix(in srgb,var(--signal) 40%,transparent));
+}
+.wordmark{font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--ivory)}
 .wordmark span{color:var(--signal)}
+
+.chips,.seg{display:flex;gap:1px;background:var(--rule);border:1px solid var(--rule);flex:none}
 .pill{
-  display:flex;align-items:center;gap:8px;
-  padding:6px 12px;border:1px solid var(--rule);border-radius:2px;
+  display:flex;align-items:center;gap:9px;
+  padding:9px 14px;background:var(--panel-2);
   font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--muted);
 }
 .pill[hidden]{display:none}
-.pill.hot{border-color:var(--signal);color:var(--signal)}
+.pill.hot{color:var(--signal);background:color-mix(in srgb,var(--signal) 12%,var(--panel-2))}
 
-.pill#sidePill{
-  font-weight:700;font-size:12px;letter-spacing:.22em;
-  padding:7px 18px;border-width:0;
+.pill#sidePill{font-weight:700;letter-spacing:.22em;padding:9px 18px}
+.pin{width:12px;height:12px;flex:none;fill:none;stroke:currentColor;stroke-width:1.1}
+.pill.atk{background:var(--rose);color:#14070c}
+.pill.def{background:var(--cyan);color:#03161a}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+.pill.hot .dot{
+  background:var(--signal);box-shadow:0 0 8px var(--signal);
+  animation:beat 1.9s ease-in-out infinite;
 }
-.pill.atk{background:var(--rose);border-color:var(--rose);color:#14070c}
-.pill.def{background:var(--cyan);border-color:var(--cyan);color:#03161a}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
-.pill.hot .dot{background:var(--signal);animation:beat 1.9s ease-in-out infinite}
 @keyframes beat{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
 .top .spacer{flex:1}
 
@@ -94,14 +102,21 @@ body{
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .who b{color:var(--ivory);font-weight:600}
+.actions{display:flex;align-items:center;gap:10px;flex:none}
 button.act{
   font-size:11px;font-weight:600;letter-spacing:.14em;
   background:none;color:var(--muted);border:1px solid var(--rule);border-radius:2px;
-  padding:7px 13px;cursor:pointer;transition:color .15s,border-color .15s;
+  padding:7px 13px;cursor:pointer;transition:color .15s,border-color .15s,background-color .15s;
 }
 button.act:hover{color:var(--ivory);border-color:var(--muted)}
 button.act:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
-button.act.danger:hover{color:var(--rose);border-color:var(--rose)}
+.top button.act{padding:9px 16px;background:var(--panel-2);border-radius:0}
+.seg button.act{border:0}
+.seg button.act:hover{background:var(--raise)}
+.top button.act.danger:hover{
+  color:var(--rose);border-color:var(--rose);
+  background:color-mix(in srgb,var(--rose) 12%,var(--panel-2));
+}
 
 .banner{
   margin-top:16px;padding:13px 16px;border-left:2px solid var(--signal);
@@ -112,26 +127,54 @@ button.act.danger:hover{color:var(--rose);border-color:var(--rose)}
 .banner.bad{border-left-color:var(--rose)}
 .banner[hidden]{display:none}
 
-.body{padding-top:26px}
+.body{padding-top:20px}
 @media (prefers-reduced-motion:reduce){
   .pill.hot .dot{animation:none}
   .rrfill{transition:none}
 }
 
-.readouts{display:flex;flex-direction:column;gap:2px;min-width:0}
-.card{min-width:0;background:var(--panel);padding:18px 22px}
-.card + .card{border-top:1px solid var(--ground)}
+.readouts{display:flex;flex-direction:column;gap:10px;min-width:0}
+.card{
+  --py:18px;--px:22px;--edge:var(--signal);
+  min-width:0;padding:var(--py) var(--px);
+  background:linear-gradient(180deg,var(--panel) 0,color-mix(in srgb,var(--panel) 45%,var(--panel-2)) 100%);
+  border:1px solid var(--hair);border-left:2px solid var(--edge);
+  transition:border-color .15s;
+}
+.card.rankcard{--edge:var(--tc)}
+.card.folded{--edge:var(--rule)}
 .card h2,.dlghead h2{
   font-size:14px;font-weight:700;letter-spacing:.2em;
   color:var(--ivory);margin-bottom:16px;
 }
+.card > h2:first-child{
+  margin:calc(-1 * var(--py)) calc(-1 * var(--px)) 18px;
+  padding:var(--py) var(--px) 0;
+}
+.card > h2:first-child > span:first-child:not(.sparisce)::before,#rosterTitle::before{
+  content:"";display:inline-block;width:7px;height:7px;margin:0 14px 0 1px;
+  vertical-align:2px;background:var(--edge);transform:rotate(45deg);
+  transition:background-color .15s;
+}
 
-#rosterCard{padding:22px 22px 24px}
-#rosterCard h2{font-size:16px;margin-bottom:18px}
+#rosterCard{--py:22px;padding-bottom:24px}
+#rosterCard h2{font-size:16px}
+#rosterTitle{display:flex;align-items:center}
+.sparisce{
+  margin-left:auto;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--muted);
+}
+.sparisce b{color:var(--signal);font-variant-numeric:tabular-nums}
+.sparisce i{
+  display:block;height:2px;margin-top:7px;background:var(--signal);
+  transform-origin:left;animation:svuota 15s linear forwards;
+}
+@keyframes svuota{to{transform:scaleX(0)}}
+#rosterCard.uscita .teams{opacity:.7;transition:opacity .4s}
+@media (prefers-reduced-motion:reduce){.sparisce i{display:none}}
 
 .card h2.fold{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin-bottom:12px;
+  cursor:pointer;user-select:none;
 }
 
 .card h2.rankhead{
@@ -141,20 +184,25 @@ button.act.danger:hover{color:var(--rose);border-color:var(--rose)}
 .foldbtn,.xbtn{
   flex:none;width:28px;height:24px;
   display:flex;align-items:center;justify-content:center;
-  background:none;color:var(--dim);
+  background:var(--panel-2);color:var(--dim);
   border:1px solid var(--rule);border-radius:2px;cursor:pointer;
   font-family:var(--mono);font-size:15px;line-height:1;
   transition:color .15s,border-color .15s;
 }
 .foldbtn::after{content:"−"}
 .xbtn::after{content:"×"}
-.foldbtn:hover,.xbtn:hover{color:var(--ivory);border-color:var(--muted)}
+.foldbtn:hover,.xbtn:hover,h2.fold:hover .foldbtn{color:var(--ivory);border-color:var(--muted)}
 .foldbtn:focus-visible,.xbtn:focus-visible{
   outline:2px solid var(--signal);outline-offset:2px;
 }
-.card.folded h2.fold{margin-bottom:0}
+.card.folded > h2.fold{margin-bottom:calc(-1 * var(--py));padding-bottom:var(--py)}
 .card.folded .foldbtn::after{content:"+"}
 .card.folded > :not(h2){display:none}
+.card.folded:hover{--edge:var(--signal)}
+.card.folded:hover > h2.fold{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--signal) 16%,var(--raise)),var(--raise) 60%);
+}
+.card.folded:hover .foldbtn{color:var(--signal);border-color:var(--signal)}
 
 .teams{display:flex;flex-direction:column;gap:0}
 .team{background:transparent;padding:0 0 6px}
@@ -191,7 +239,7 @@ table.roster{table-layout:fixed;margin-top:2px}
 .roster tbody td{height:40px;line-height:1.2}
 .roster .rk{max-width:100%;overflow:hidden}
 table.roster > tbody > tr:last-child > td{border-bottom:none}
-.roster .ag{width:112px}
+.roster .ag{width:100px}
 .roster .lv{width:44px}
 .roster .gm{width:52px}
 .roster .cp{width:30px}
@@ -280,10 +328,11 @@ table.roster > tbody > tr:last-child > td{border-bottom:none}
 .roster .metbox td.ms{color:var(--dim)}
 .roster .k,.roster .s{width:42px}
 .roster .h,.roster .w{width:48px}
-.roster .r{width:224px}
-.roster .pk{width:308px}
+.roster .r{width:210px}
+.roster .la{width:192px}
+.roster .pk{width:266px}
 
-.roster th.r,.roster td.r,.roster th.pk,.roster td.pk{text-align:left}
+.roster th.r,.roster td.r,.roster th.la,.roster td.la,.roster th.pk,.roster td.pk{text-align:left}
 .roster th.r,.roster td.r{padding-left:18px}
 .roster td.ag,.roster td.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .roster td.ag{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.04em}
@@ -291,11 +340,17 @@ table.roster > tbody > tr:last-child > td{border-bottom:none}
   color:var(--ivory);font-family:var(--disp);font-size:15px;font-weight:600;
   letter-spacing:.02em;text-transform:none;
 }
+.roster td.nm .anon{
+  display:inline-flex;align-items:center;gap:9px;vertical-align:-1px;
+  color:var(--dim);font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;
+}
+.anon svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
 .roster td.lv{color:var(--dim);font-size:11px}
 .roster td.k,.roster td.s,.roster td.h,.roster td.w,.roster td.gm{color:var(--muted)}
 table.roster > tbody > tr.pari > td{background:rgba(255,255,255,.022)}
 table.roster > tbody > tr:not(.metrow):hover > td{background:var(--raise)}
-.roster td.r,.roster td.pk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster td.r,.roster td.la,.roster td.pk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .roster td.r.stale .rk{opacity:.45}
 .roster tr.me td.ag{color:var(--signal)}
 .roster tr.me td.nm{color:var(--signal);font-weight:700}
@@ -312,56 +367,75 @@ table.roster > tbody > tr:not(.metrow):hover > td{background:var(--raise)}
   color:var(--c,var(--dim));white-space:nowrap;
 }
 .rk::before{
-  content:"";width:8px;height:8px;flex:none;
-  background:var(--c,var(--dim));transform:rotate(45deg);
+  content:"";width:11px;height:11px;flex:none;
+  background:var(--c,var(--dim));clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
 }
 .rk.ico::before{
-  width:23px;height:23px;margin:0 3px 0 -2px;transform:none;
+  width:23px;height:23px;margin:0 3px 0 -2px;clip-path:none;
   background:var(--i) center/contain no-repeat;
 }
-.rkpeak .rk.ico::before{width:21px;height:21px}
 
 .rk .lbl{display:inline-block;min-width:92px}
 .rk .act{color:var(--dim);letter-spacing:.02em;font-weight:600;font-size:9.5px}
 .teamnote{font-family:var(--mono);font-size:11px;color:var(--muted);
   line-height:1.6;padding:12px 0 4px}
 
+.rankcard{--tc:var(--dim);--rientro:34px}
+.rankcard:has(.tiername.ico){--rientro:90px}
+.rankrow{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:32px;flex-wrap:wrap;padding:20px 0 26px;margin-top:4px;
+}
+.rkmain{min-width:0;flex:1 1 440px;max-width:780px}
 .tiername{
-  display:flex;align-items:center;gap:15px;
-  font-weight:700;font-size:42px;letter-spacing:.02em;line-height:1;
+  display:flex;align-items:center;gap:18px;
+  font-weight:700;font-size:48px;letter-spacing:.03em;line-height:1;
 }
 .tiername::before{
-  content:"";width:15px;height:15px;flex:none;
+  content:"";width:16px;height:16px;flex:none;
   background:currentColor;transform:rotate(45deg);
 }
-.tiername.ico{gap:12px}
+.tiername.ico{gap:16px}
 .tiername.ico::before{
-  width:56px;height:56px;transform:none;margin:0;
+  width:74px;height:74px;transform:none;margin:-8px 0;
   background:var(--i) center/contain no-repeat;
+  filter:drop-shadow(0 0 22px color-mix(in srgb,currentColor 65%,transparent));
 }
-.rankrow{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  gap:40px;flex-wrap:wrap;
-}
-.rkmain{min-width:0;flex:0 1 auto}
-.rkmain .label{margin-top:11px;display:block}
-.rkpeak{flex:none;text-align:right}
-.rkpeak .num{font-size:15px;margin-top:6px}
-.rkpeak .rk .lbl{min-width:0}
-.rkpeak .rk{font-size:13px}
+.rkmain .label{display:block;margin:12px 0 0 var(--rientro)}
 .rrwrap{
-  flex:1 1 300px;max-width:520px;align-self:flex-start;margin:20px 0 0;
-  display:flex;align-items:center;gap:15px;
+  display:flex;align-items:center;gap:18px;
+  margin:18px 0 0 var(--rientro);max-width:600px;
 }
 .rrbar{
-  flex:1;height:10px;background:var(--raise);position:relative;overflow:hidden;
-  border-radius:2px;box-shadow:inset 0 0 0 1px var(--rule);
+  flex:1;height:12px;position:relative;background:var(--raise);
+  clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);
 }
-.rrfill{position:absolute;inset:0 auto 0 0;background:var(--signal);
-  border-radius:2px;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.rrbar::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 3px),var(--panel) calc(25% - 3px) 25%);
+}
+.rrfill{
+  position:absolute;inset:0 auto 0 0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 55%,var(--ground)),var(--tc));
+  transition:width .7s cubic-bezier(.2,.7,.2,1);
+}
 #rrText{
-  flex:none;font-size:14px;color:var(--ivory);font-weight:600;
+  flex:none;font-size:26px;color:var(--ivory);font-weight:700;line-height:1;
   font-variant-numeric:tabular-nums;
+}
+#rrText small{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.14em;margin-left:6px}
+.rkpeak{
+  flex:none;min-width:230px;padding:16px 22px 18px 18px;
+  background:var(--panel-2);border:1px solid var(--rule);
+}
+.rkpeak .label{display:block;margin-bottom:12px}
+.rkpeak .pk{display:flex;align-items:center;gap:14px}
+.rkpeak .pk i{width:40px;height:40px;flex:none;background:var(--i) center/contain no-repeat}
+.rkpeak .pk i.dot{width:12px;height:12px;margin:0 6px;transform:rotate(45deg)}
+.rkpeak .pk b{display:block;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+.rkpeak .pk em{
+  display:block;margin-top:5px;font-style:normal;font-size:10px;
+  color:var(--muted);letter-spacing:.12em;text-transform:uppercase;
 }
 
 #aggTitle{
@@ -370,23 +444,46 @@ table.roster > tbody > tr:not(.metrow):hover > td{background:var(--raise)}
 }
 #aggTitle[hidden]{display:none}
 .grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
-  gap:1px;background:var(--hair);margin-top:16px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:1px;background:var(--hair);border:1px solid var(--hair);margin-top:16px;
 }
 
-.cell{background:var(--panel);padding:15px 16px 15px 18px}
-.grid .cell:first-child{padding-left:0}
-.cell .v{font-family:var(--mono);font-size:25px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
-.cell .v small{font-size:12px;color:var(--dim);font-weight:400}
-.cell .k{margin-bottom:9px}
-.cell .v.good{color:var(--win)}
-.cell .v.bad{color:var(--rose)}
-.cell .v.up{
-  font-family:var(--disp);font-weight:700;font-size:28px;
-  letter-spacing:.05em;text-transform:uppercase;
+.cell{
+  --tono:var(--rule);
+  background:var(--panel-2);padding:16px 20px 18px;
+  box-shadow:inset 0 2px 0 var(--tono);
 }
-
-.cell.wide{grid-column:span 2}
+.cell.good{--tono:var(--win)}
+.cell.bad{--tono:var(--rose)}
+.cell .v{
+  font-family:var(--mono);font-size:28px;font-weight:700;color:var(--ivory);
+  font-variant-numeric:tabular-nums;line-height:1;white-space:nowrap;
+}
+.cell .v small{font-size:13px;color:var(--muted);font-weight:600;margin-left:3px}
+.cell .k{margin-bottom:12px;white-space:nowrap;letter-spacing:.12em}
+.cell.good .v{color:var(--win)}
+.cell.bad .v{color:var(--rose)}
+.hl{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px}
+.tile{
+  display:grid;grid-template-columns:1fr auto;align-items:end;gap:12px 16px;
+  padding:16px 20px 18px;background:var(--panel-2);border:1px solid var(--hair);
+}
+.tile .label{grid-column:1 / -1}
+.tile .tv{
+  font-weight:700;font-size:28px;letter-spacing:.05em;line-height:1;
+  text-transform:uppercase;color:var(--ivory);
+}
+.tile .ts{
+  font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-variant-numeric:tabular-nums;
+}
+.tile .ts.good{color:var(--win)}
+.tile .ts.bad{color:var(--rose)}
+.tile.arte{
+  background:linear-gradient(90deg,var(--panel-2) 30%,color-mix(in srgb,var(--panel-2) 40%,transparent)),
+             var(--arte) calc(100% + 2px) center/cover no-repeat;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
 
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
 thead th{text-align:right;padding:0 0 10px;border-bottom:1px solid var(--rule)}
@@ -399,6 +496,12 @@ td.res i{display:inline-block;width:3px;height:15px;vertical-align:-3px}
 td.res i.w{background:var(--win)}
 td.res i.l{background:var(--rose)}
 td.res i.d{background:var(--dim)}
+td.arte{
+  padding-left:12px;text-shadow:0 1px 3px rgba(0,0,0,.85);
+  background:linear-gradient(90deg,rgba(19,25,32,.3),var(--panel) 88%),
+             var(--arte) -2px center/cover no-repeat;
+}
+.hist td.arte,.maps td.arte{padding:14px 0 14px 12px}
 td.map,td.mp{color:var(--ivory);font-size:12px;font-weight:600;letter-spacing:.12em}
 td.map{width:20%}
 td.agent{
@@ -479,9 +582,26 @@ td.rr.down{color:var(--rose)}
 .logline.error .lv,.logline.error .lm{color:var(--rose)}
 
 table.hist{table-layout:fixed}
-.hist th.res{width:22px}
-.hist th.map{width:22%}
-.hist th.agent{width:18%}
+.hist th.res{width:76px}
+.esito{
+  display:inline-block;min-width:58px;padding:4px 0 3px;text-align:center;
+  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid currentColor;
+}
+.esito.w{color:var(--win);background:rgba(46,194,126,.1)}
+.esito.l{color:var(--rose);background:rgba(224,74,107,.1)}
+.esito.d{color:var(--dim)}
+.esito.tot{color:var(--signal);background:rgba(245,166,60,.08);letter-spacing:.06em}
+.hist th.map{width:18%}
+.hist th.agent{width:15%}
+.hist td.good{color:var(--win)}
+.hist td.bad{color:var(--rose)}
+.hist tfoot td{
+  padding:12px 0 2px;border-top:1px solid var(--rule);text-align:right;
+  font-variant-numeric:tabular-nums;font-weight:700;color:var(--ivory);
+}
+.hist tfoot td.l{text-align:left;padding-left:12px;color:var(--muted);font-size:11px;letter-spacing:.15em}
+.hist tfoot td.res{text-align:left}
 
 table.maps td{padding:11px 0}
 
@@ -492,6 +612,15 @@ table.maps:not(.acts){table-layout:fixed}
 .maps th.wr,.maps td.wr{width:88px;font-weight:600;color:var(--ivory)}
 .maps td.wr.good{color:var(--win)}
 .maps td.wr.bad{color:var(--rose)}
+.maps:not(.acts) th.mp{width:26%}
+.maps:not(.acts) th.wr,.maps:not(.acts) td.wr{width:118px}
+.wrbar{display:inline-block;width:46px;height:3px;margin-right:10px;vertical-align:middle;background:var(--rule)}
+.wrbar i{display:block;height:100%;background:currentColor}
+.maps th.ba,.maps td.ba{width:21%;padding-left:28px}
+.maps td.ba{color:var(--muted);font-size:11.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase}
+.wrnum{display:inline-block;min-width:4.5ch;text-align:right}
+.maps td.good{color:var(--win)}
+.maps td.bad{color:var(--rose)}
 
 .acts td.mp{font-size:11px;letter-spacing:.15em}
 .acts td.mp em.dim{font-style:normal;color:var(--dim);font-size:10px}
@@ -508,8 +637,8 @@ table.maps:not(.acts){table-layout:fixed}
 .loadbar i{display:block;height:100%;width:38%;background:var(--signal);animation:scorri 1.05s ease-in-out infinite}
 @keyframes scorri{0%{transform:translateX(-100%)}100%{transform:translateX(360%)}}
 @media (prefers-reduced-motion:reduce){.loadbar i{animation:none;width:100%;opacity:.6}}
-body.offline .top{border-bottom-color:var(--signal)}
-body.offline #statePill{border-color:var(--signal);color:var(--signal)}
+body.offline .top{border-color:var(--signal)}
+body.offline #statePill{color:var(--signal);background:color-mix(in srgb,var(--signal) 12%,var(--panel-2))}
 body.offline #statePill .dot{background:var(--signal)}
 body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:var(--signal)}
 .foot{
@@ -522,6 +651,8 @@ body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:
 
 @media (max-width:760px){
   .tiername{font-size:34px}
+  .tiername.ico::before{width:56px;height:56px}
+  .rankcard:has(.tiername.ico){--rientro:72px}
 }
 </style>
 </head>
@@ -543,15 +674,20 @@ body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:
       <div class="wordmark">valo<span>·</span>readout</div>
     </div>
     <div class="loadbar" id="loadbar" hidden><i></i></div>
-    <div class="pill" id="statePill"><i class="dot"></i><span id="stateText">in attesa</span></div>
-    <div class="pill" id="modePill" hidden><span id="modeText"></span></div>
-    <div class="pill" id="mapPill" hidden><span id="mapText"></span></div>
-    <div class="pill" id="sidePill" hidden><span id="sideText"></span></div>
+    <div class="chips">
+      <div class="pill" id="statePill"><i class="dot"></i><span id="stateText">in attesa</span></div>
+      <div class="pill" id="modePill" hidden><span id="modeText"></span></div>
+      <div class="pill" id="mapPill" hidden><span id="mapText"></span></div>
+      <div class="pill" id="serverPill" hidden><svg class="pin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5"/><path d="M1.5 6h9M6 1.5c-2.2 2.5-2.2 6.5 0 9M6 1.5c2.2 2.5 2.2 6.5 0 9"/></svg><span id="serverText"></span></div>
+      <div class="pill" id="sidePill" hidden><span id="sideText"></span></div>
+    </div>
     <div class="spacer"></div>
     <div class="actions">
-      <button class="act" id="keyBtn" data-i18n="keyBtn">chiave</button>
-      <button class="act" id="refresh" data-i18n="refresh">aggiorna</button>
-      <button class="act" id="langBtn">ENGLISH</button>
+      <div class="seg">
+        <button class="act" id="keyBtn" data-i18n="keyBtn">chiave</button>
+        <button class="act" id="refresh" data-i18n="refresh">aggiorna</button>
+        <button class="act" id="langBtn">ENGLISH</button>
+      </div>
       <button class="act danger" id="closeBtn" data-i18n="close">chiudi</button>
     </div>
   </header>
@@ -567,25 +703,25 @@ body.offline #stamp::after{content:" — scollegato, dati non aggiornati";color:
         <div id="rosterBox"></div>
       </section>
 
-      <section class="card">
+      <section class="card rankcard" id="rankCard">
         <h2 class="rankhead"><span data-i18n="rank">Rank</span>
           <span class="who" id="who">—</span></h2>
         <div class="rankrow">
           <div class="rkmain">
             <div class="tiername" id="tierName">—</div>
             <div class="label" id="actLine"></div>
-          </div>
-          <div class="rrwrap">
-            <div class="rrbar"><div class="rrfill" id="rrFill" style="width:0"></div></div>
-            <span class="num" id="rrText">—</span>
+            <div class="rrwrap">
+              <div class="rrbar"><div class="rrfill" id="rrFill" style="width:0"></div></div>
+              <span class="num" id="rrText">—</span>
+            </div>
           </div>
           <div class="rkpeak">
             <div class="label" data-i18n="peak">peak</div>
-            <div class="num" id="peakName">—</div>
+            <div id="peakName">—</div>
           </div>
         </div>
         <h2 id="aggTitle" hidden></h2>
-        <div class="grid" id="agg"></div>
+        <div id="agg"></div>
       </section>
 
       <section class="card">
@@ -662,10 +798,11 @@ const I18N = {
     refresh:"aggiorna", close:"chiudi", other:"ENGLISH",
     error:"errore", noGame:"gioco non attivo", menus:"nei menu",
     teams:"Squadre", players:"Giocatori", agentSelect:"Agent select",
+    goneIn:"partita finita · sparisce tra {n}s",
     yourTeam:"la tua squadra", enemies:"avversari", ffa:"tutti contro tutti",
     party:"party", partyQueue:"in coda per {q}", partyIdle:"nel menu",
     enemiesLater:"In agent select il client non espone la squadra avversaria: compare quando la partita comincia.",
-    rank:"Rank", peak:"peak", rr:"ranked rating", history:"Storico",
+    rank:"Rank", peak:"peak", lastAct:"atto scorso", notPlayed:"non giocato", unrated:"non classificato", rr:"ranked rating", history:"Storico",
     maps:"Mappe", log:"Registro",
     agent:"agente", name:"nome", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
     metTimes:"Gia' incontrato {n} volte in ranked",
@@ -696,12 +833,12 @@ const I18N = {
     compGames:"comp", compGamesHint:"competitive giocate in questo act",
     copyHint:"copia i dati del giocatore",
     map:"mappa", colK:"k", colD:"d", colA:"a", colRR:"rr",
-    winPct:"v %", colW:"v", colL:"s",
+    histAvg:"media", colW:"v", colL:"s",
     kda:"kda", kdCell:"k / d", acsCell:"acs medio", hsCell:"headshot",
-    wrCell:"win rate", vs:"v \u2014 s", kpr:"kill / round", topAgent:"agente top",
+    wrCell:"win rate", vs:"v \u2014 s", kpr:"kill / round", topAgent:"agente top", bestMap:"mappa migliore",
     noComp:"Nessuna competitive in questo act.",
     noRecent:"Nessuna competitive recente.",
-    anon:"anonimo", actNow:"act in corso", comp:"competitive", of:"su",
+    anon:"incognito", actNow:"act in corso", comp:"competitive", of:"su",
     updated:"aggiornato", mockTitle:"Dati di esempio.",
     mockBody:"Avvia <code>python bridge.py</code> con Valorant aperto per i tuoi.",
     errTitle:"Il ponte non riesce a leggere il client.",
@@ -731,10 +868,11 @@ const I18N = {
     refresh:"refresh", close:"quit", other:"ITALIANO",
     error:"error", noGame:"game not running", menus:"in menus",
     teams:"Teams", players:"Players", agentSelect:"Agent select",
+    goneIn:"match over · disappears in {n}s",
     yourTeam:"your team", enemies:"enemies", ffa:"free for all",
     party:"party", partyQueue:"queued for {q}", partyIdle:"in the menus",
     enemiesLater:"In agent select the client does not expose the enemy team: it shows up once the match starts.",
-    rank:"Rank", peak:"peak", rr:"ranked rating", history:"History",
+    rank:"Rank", peak:"peak", lastAct:"last act", notPlayed:"not played", unrated:"unrated", rr:"ranked rating", history:"History",
     maps:"Maps", log:"Log",
     agent:"agent", name:"name", lvl:"lvl", kd:"k/d", acs:"acs", hs:"hs", wr:"wr",
     metTimes:"Met {n} times before in ranked",
@@ -765,12 +903,12 @@ const I18N = {
     compGames:"comp", compGamesHint:"competitive games played this act",
     copyHint:"copy this player's numbers",
     map:"map", colK:"k", colD:"d", colA:"a", colRR:"rr",
-    winPct:"win %", colW:"w", colL:"l",
+    histAvg:"average", colW:"w", colL:"l",
     kda:"kda", kdCell:"k / d", acsCell:"avg acs", hsCell:"headshot",
-    wrCell:"win rate", vs:"w \u2014 l", kpr:"kills / round", topAgent:"top agent",
+    wrCell:"win rate", vs:"w \u2014 l", kpr:"kills / round", topAgent:"top agent", bestMap:"best map",
     noComp:"No competitive matches this act.",
     noRecent:"No recent competitive matches.",
-    anon:"hidden", actNow:"current act", comp:"competitive", of:"of",
+    anon:"anonymous", actNow:"current act", comp:"competitive", of:"of",
     updated:"updated", mockTitle:"Sample data.",
     mockBody:"Run <code>python bridge.py</code> with Valorant open for your own.",
     errTitle:"The bridge cannot read the client.",
@@ -848,6 +986,7 @@ function render(s) {
   };
   chip("modePill", "modeText", (s.roster || {}).queue || live.queue);
   chip("mapPill", "mapText", (s.roster || {}).map || live.map);
+  chip("serverPill", "serverText", (s.roster || {}).server);
   mostraCarico(!!s.refreshing);
   mostraAggiornamento(s.update || {}, s.appVersion || "");
   mostraVersione(s.appVersion || "");
@@ -855,8 +994,9 @@ function render(s) {
   chip("sidePill", "sideText", lato ? t(lato === "attacco" ? "atk" : "def") : "");
   $("sidePill").classList.toggle("atk", lato === "attacco");
   $("sidePill").classList.toggle("def", lato === "difesa");
-  $("rosterCard").classList.toggle("atk", lato === "attacco");
-  $("rosterCard").classList.toggle("def", lato === "difesa");
+  const vista = rosterDaMostrare(s.roster || {});
+  $("rosterCard").classList.toggle("atk", vista.side === "attacco");
+  $("rosterCard").classList.toggle("def", vista.side === "difesa");
 
   const acc = s.account || {};
   $("who").innerHTML = acc.name
@@ -892,7 +1032,7 @@ function render(s) {
   }
 
   conIcone = !!s.tierIcons;
-  renderRoster(s.roster || {});
+  renderRoster(vista);
 
   $("tierName").textContent = rank.tierName || "—";
   $("tierName").style.color = tierColor(rank.tier);
@@ -900,45 +1040,64 @@ function render(s) {
   if (conIcone && rank.tier != null) {
     $("tierName").style.setProperty("--i", `url('/tier/${rank.tier}.png')`);
   }
-  $("rrFill").style.background = tierColor(rank.tier);
-  $("peakName").innerHTML = rankChip(rank.peakTier, rank.peakTierName,
-                                     null, rank.peakRR);
+  $("rankCard").style.setProperty("--tc", tierColor(rank.tier));
+  $("peakName").innerHTML = rank.peakTier == null ? "—"
+    : `<span class="pk"><i${conIcone
+        ? ` style="--i:url('/tier/${rank.peakTier}.png')"`
+        : ` class="dot" style="background:${tierColor(rank.peakTier)}"`}></i>`
+      + `<span><b style="color:${tierColor(rank.peakTier)}">${esc(rank.peakTierName)}</b>`
+      + `${rank.peakSeason ? `<em>${esc(rank.peakSeason)}</em>` : ""}</span></span>`;
   $("actLine").textContent = rank.actGames
     ? `${rank.actName || t("actNow")} · ${rank.actWins}${t("colW")} / ${rank.actGames}` : "";
 
   const dentro = progressoRR(rank.tier, rank.rr);
   $("rrFill").style.width = (dentro == null ? 100 : dentro) + "%";
-  $("rrText").textContent = rank.rr == null ? "—" : `${rank.rr} RR`;
+  $("rrText").innerHTML = rank.rr == null ? "—" : `${esc(rank.rr)}<small>RR</small>`;
 
   const tot = agg.actGames || 0;
   $("aggTitle").textContent = agg.games && tot > agg.games
     ? `${agg.games} ${t("of")} ${tot} ${t("comp")}` : "";
   $("aggTitle").hidden = !$("aggTitle").textContent;
-  $("agg").innerHTML = !agg.games ? `<div class="cell"><div class="empty">${t("noComp")}</div></div>` : [
-    cell(t("kda"), dec(agg.kda), null, agg.kda >= 1.2 ? "good" : agg.kda < 0.9 ? "bad" : ""),
-    cell(t("kdCell"), dec(agg.kd)),
-    cell(t("acsCell"), Math.round(agg.acs)),
-    cell(t("hsCell"), agg.hs, "%"),
-    cell(t("wrCell"), agg.winRate, "%", agg.winRate >= 55 ? "good" : agg.winRate < 45 ? "bad" : ""),
-    cell(t("vs"), `${agg.wins}–${agg.losses}`),
-    cell(t("kpr"), dec(agg.killsPerRound)),
-    agg.bestAgent ? cellText(t("topAgent"), agg.bestAgent, `${dec(agg.bestAgentKda)} kda`) : "",
+  arte = s.mapArt || {};
+  const tonoWr = agg.winRate >= 55 ? "good" : agg.winRate < 45 ? "bad" : "";
+  const riquadro = (k, v, sub, tono, url) =>
+    `<div class="tile${url ? " arte" : ""}"${url ? ` style="--arte:url('${esc(url)}')"` : ""}>`
+    + `<div class="label k">${k}</div><div class="tv">${esc(v)}</div>`
+    + `<div class="ts ${tono}">${esc(sub)}</div></div>`;
+  const evidenze = [
+    agg.bestAgent ? riquadro(t("topAgent"), agg.bestAgent, `${dec(agg.bestAgentKda)} kda`,
+                             agg.bestAgentKda >= 1 ? "good" : "bad") : "",
+    agg.bestMap ? riquadro(t("bestMap"), agg.bestMap, `${agg.bestMapWr}% wr`,
+                           agg.bestMapWr >= 55 ? "good" : agg.bestMapWr < 45 ? "bad" : "",
+                           arte[agg.bestMap]) : "",
   ].join("");
-
+  $("agg").innerHTML = !agg.games
+    ? `<div class="grid"><div class="cell"><div class="empty">${t("noComp")}</div></div></div>`
+    : `<div class="grid">${[
+        cell(t("kda"), dec(agg.kda), null, agg.kda >= 1.2 ? "good" : agg.kda < 0.9 ? "bad" : ""),
+        cell(t("kdCell"), dec(agg.kd)),
+        cell(t("acsCell"), Math.round(agg.acs)),
+        cell(t("hsCell"), agg.hs, "%"),
+        cell(t("wrCell"), agg.winRate, "%", tonoWr),
+        cell(t("vs"), `${agg.wins}–${agg.losses}`),
+        cell(t("kpr"), dec(agg.killsPerRound)),
+      ].join("")}</div>${evidenze ? `<div class="hl">${evidenze}</div>` : ""}`;
   $("histBox").innerHTML = !(s.matches || []).length
     ? `<div class="empty">${t("noRecent")}</div>`
     : `<div class="scroll"><table class="hist">
         <thead><tr><th class="res"></th><th class="map l">${t("map")}</th>
         <th class="agent l">${t("agent")}</th>
         <th>${t("colK")}</th><th>${t("colD")}</th><th>${t("colA")}</th>
+        <th>${t("kd")}</th><th>${t("kda")}</th>
         <th>${t("acs")}</th><th>${t("hs")}</th><th>${t("colRR")}</th></tr></thead>
-        <tbody>${s.matches.map(matchRow).join("")}</tbody></table></div>`;
+        <tbody>${s.matches.map(matchRow).join("")}</tbody>
+        <tfoot>${mediaRow(s.matches)}</tfoot></table></div>`;
 
   const acts = s.acts || [];
   $("actsCard").hidden = !acts.length;
   if (acts.length) $("actsBox").innerHTML = `<div class="scroll"><table class="maps acts">
         <thead><tr><th class="l mp">${t("actCol")}</th><th class="l pk">${t("peak")}</th>
-        <th class="wr">${t("winPct")}</th>
+        <th class="wr">${t("wr")}</th>
         <th>${t("colW")}</th><th>${t("colL")}</th><th>${t("kd")}</th>
         <th>${t("acs")}</th><th>${t("hs")}</th></tr></thead>
         <tbody>${acts.map(actRow).join("")}</tbody></table></div>`;
@@ -947,9 +1106,9 @@ function render(s) {
   $("mapsBox").innerHTML = !maps.length
     ? `<div class="empty">${t("noComp")}</div>`
     : `<div class="scroll"><table class="maps">
-        <thead><tr><th class="l mp">${t("map")}</th><th class="wr">${t("winPct")}</th>
-        <th>${t("colW")}</th><th>${t("colL")}</th><th>${t("kd")}</th>
-        <th>${t("acs")}</th><th>${t("hs")}</th></tr></thead>
+        <thead><tr><th class="l mp">${t("map")}</th><th class="wr">${t("wr")}</th>
+        <th>${t("colW")}</th><th>${t("colL")}</th><th>${t("kd")}</th><th>${t("kda")}</th>
+        <th>${t("acs")}</th><th>${t("hs")}</th><th class="ba l">${t("topAgent")}</th></tr></thead>
         <tbody>${maps.map(mapRow).join("")}</tbody></table></div>`;
 
   const loc = lang === "en" ? "en-GB" : "it-IT";
@@ -970,15 +1129,52 @@ function render(s) {
     ? t("updated") + " " + new Date(s.updatedAt * 1000).toLocaleTimeString(loc) : "—";
 }
 
+const TENUTA_MS = 15000;
+let ultimaPartita = null, tenuta = null, contoTenuta = null;
+
+function rosterDaMostrare(r) {
+  if (r.matchId) {
+    ultimaPartita = r.loop === "INGAME" ? r : null;
+    tenuta = null;
+    return r;
+  }
+  if (ultimaPartita) {
+    tenuta = { roster: ultimaPartita, fine: Date.now() + TENUTA_MS };
+    ultimaPartita = null;
+    contoTenuta = contoTenuta || setInterval(scorriTenuta, 250);
+  }
+  if (tenuta && Date.now() < tenuta.fine) return tenuta.roster;
+  tenuta = null;
+  return r;
+}
+
+function scorriTenuta() {
+  if (tenuta && Date.now() < tenuta.fine) {
+    const n = document.querySelector("#rosterTitle .sparisce b");
+    if (n) n.textContent = Math.ceil((tenuta.fine - Date.now()) / 1000);
+    return;
+  }
+  clearInterval(contoTenuta);
+  contoTenuta = null;
+  if (lastState) render(lastState);
+}
+
 function renderRoster(r) {
   const card = $("rosterCard");
   const allies = r.allies || [], enemies = r.enemies || [];
   if (!allies.length && !enemies.length) { card.hidden = true; return; }
 
   card.hidden = false;
-  $("rosterTitle").textContent = r.party ? t("party")
+  const inUscita = !!tenuta && r === tenuta.roster;
+  card.classList.toggle("uscita", inUscita);
+  const titolo = r.party ? t("party")
     : r.ffa ? t("players")
     : r.loop === "PREGAME" ? t("agentSelect") : t("teams");
+  const resto = inUscita ? tenuta.fine - Date.now() : 0;
+  $("rosterTitle").innerHTML = esc(titolo) + (inUscita
+    ? `<span class="sparisce">${t("goneIn").replace("{n}", `<b>${Math.ceil(resto / 1000)}</b>`)}`
+      + `<i style="animation-delay:${((resto - TENUTA_MS) / 1000).toFixed(2)}s"></i></span>`
+    : "");
 
   const body = r.party
     ? teamCol(r.searching
@@ -989,8 +1185,10 @@ function renderRoster(r) {
     : `${teamCol(t("yourTeam"), allies)}
        ${enemies.length
         ? teamCol(t("enemies"), enemies)
-        : `<div class="team"><div class="label th">${t("enemies")}</div>
-             <div class="teamnote">${t("enemiesLater")}</div></div>`}`;
+        : r.enemiesHidden
+        ? `<div class="team"><div class="label th">${t("enemies")}</div>
+             <div class="teamnote">${t("enemiesLater")}</div></div>`
+        : ""}`;
 
   $("rosterBox").innerHTML = `<div class="teams">${body}</div>`;
 }
@@ -1004,7 +1202,8 @@ const teamCol = (title, rows) => `<div class="team">
         <th class="gm" title="${t("compGamesHint")}">${t("compGames")}</th>
         <th class="k">${t("kd")}</th><th class="s">${t("acs")}</th>
         <th class="h">${t("hs")}</th><th class="w">${t("wr")}</th>
-        <th class="r">${t("rank")}</th><th class="pk">${t("peak")}</th>
+        <th class="r">${t("rank")}</th><th class="la">${t("lastAct")}</th>
+        <th class="pk">${t("peak")}</th>
         <th class="cp"></th>
       </tr></thead>
       <tbody>${rows.map((p, i) => playerRow(p, i)).join("")}</tbody>
@@ -1031,6 +1230,13 @@ function progressoRR(tier, rr) {
 }
 
 let conIcone = false;
+let arte = {};
+
+function cellaMappa(nome, cls) {
+  const url = arte[nome];
+  return `<td class="${cls} l${url ? " arte" : ""}"`
+    + `${url ? ` style="--arte:url('${esc(url)}')"` : ""}>${esc(nome)}</td>`;
+}
 
 function tierColor(tier) {
   if (tier == null) return "var(--dim)";
@@ -1108,6 +1314,8 @@ function rigaDettaglio(p) {
     const segno = x.won === true ? "w" : x.won === false ? "l" : "d";
     return `<tr><td class="res"><i class="${segno}"></i></td>`
       + `<td>${esc(quandoFa(x.at))}</td>`
+      + `<td class="ms">${esc(x.at ? new Date(x.at).toLocaleString(lang === "en" ? "en-GB" : "it-IT",
+          { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "")}</td>`
       + `<td class="mq">${esc(x.map || "—")}</td>`
       + `<td class="ms">${esc(x.ally ? t("metWith") : t("metAgainst"))}</td>`
       + `<td class="m${segno}">${esc(esito)}</td></tr>`;
@@ -1118,7 +1326,7 @@ function rigaDettaglio(p) {
     ? `<table>${righe.slice(0, meta).join("")}</table>`
       + `<table>${righe.slice(meta).join("")}</table>`
     : `<table>${righe.join("")}</table>`;
-  return `<tr class="metrow" data-met="${esc(p.puuid)}" hidden><td colspan="11">
+  return `<tr class="metrow" data-met="${esc(p.puuid)}" hidden><td colspan="12">
       <div class="metbox">
         <div class="metstat">${cifreIncontro(m)}</div>
         <div class="metlist">${colonne}</div>
@@ -1183,12 +1391,12 @@ document.addEventListener("click", async (ev) => {
 
 function playerRow(p, i) {
   const nascosto = p.incognito && !p.me;
-  const name = nascosto ? t("anon") : (p.name || "—");
   const cls = (p.me ? " me" : "") + (p.locked === false ? " soft" : "")
     + (i % 2 ? " pari" : "");
   const lvl = p.level == null ? "—" : p.level;
-  const shown = nascosto || !p.name
-    ? esc(name)
+  const shown = nascosto
+    ? `<span class="anon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>${t("anon")}</span>`
+    : !p.name ? "—"
     : `<a href="${esc(trackerUrl(p.name))}" target="_blank" rel="noopener"
          title="${esc(t("openOn").replace("{n}", p.name))}">${esc(p.name)}</a>`;
   return `<tr class="${cls.trim()}">
@@ -1201,6 +1409,8 @@ function playerRow(p, i) {
       ${stat(p, s => s.hs == null ? null : s.hs + "%")}
       ${stat(p, s => s.winRate == null ? null : s.winRate + "%")}
       <td class="r${p.stale ? " stale" : ""}">${rankChip(p.tier, p.tierName, "", p.rr)}</td>
+      <td class="la">${p.lastTier != null ? rankChip(p.lastTier, p.lastTierName, "", p.lastRR)
+        : rankChip(null, p.lastPlayed == null ? "—" : t(p.lastPlayed ? "unrated" : "notPlayed"), "")}</td>
       <td class="pk">${rankChip(p.peakTier, p.peakTierName, p.peakAct)}</td>
       <td class="cp"><button class="copybtn" type="button"
         title="${esc(t("copyHint"))}" data-copia="${esc(testoCopia(p))}"></button></td>
@@ -1211,13 +1421,16 @@ function mapRow(m) {
   const wr = m.winRate;
   const tone = wr == null ? "" : wr >= 55 ? " good" : wr < 45 ? " bad" : "";
   return `<tr>
-    <td class="mp l">${esc(m.map)}</td>
-    <td class="wr${tone}">${wr == null ? "—" : wr + "%"}</td>
+    ${cellaMappa(m.map, "mp")}
+    <td class="wr${tone}">${wr == null ? "—"
+      : `<span class="wrbar"><i style="width:${wr}%"></i></span><span class="wrnum">${wr}%</span>`}</td>
     <td class="w${m.wins ? " has" : ""}">${m.wins}</td>
     <td class="ls">${m.losses}</td>
     <td>${dec(m.kd)}</td>
+    <td class="${m.kda >= 1 ? "good" : "bad"}">${dec(m.kda)}</td>
     <td>${m.acs == null ? "—" : m.acs}</td>
     <td>${m.hs == null ? "—" : m.hs + "%"}</td>
+    <td class="ba l">${esc(m.bestAgent || "—")}</td>
   </tr>`;
 }
 
@@ -1245,15 +1458,44 @@ function matchRow(m) {
   const tot = (sh.head || 0) + (sh.body || 0) + (sh.leg || 0);
   const hs = tot ? Math.round(sh.head / tot * 100) : null;
   const res = m.won === true ? "w" : m.won === false ? "l" : "d";
+  const esito = m.won === true ? t("metWon") : m.won === false ? t("metLost") : t("metNoResult");
   const rr = m.rrDelta;
   return `<tr>
-    <td class="res"><i class="${res}"></i></td>
-    <td class="map l">${esc(m.map)}</td>
+    <td class="res"><span class="esito ${res}">${esc(esito)}</span></td>
+    ${cellaMappa(m.map, "map")}
     <td class="agent l">${esc(m.agent)}</td>
     <td>${m.kills}</td><td>${m.deaths}</td><td>${m.assists}</td>
+    ${rapporti(m.kills, m.deaths, m.assists)}
     <td>${Math.round(m.acs)}</td>
     <td>${hs == null ? "—" : hs + "%"}</td>
     <td class="rr ${rr > 0 ? "up" : rr < 0 ? "down" : ""}">${rr == null ? "—" : (rr > 0 ? "+" : "") + rr}</td>
+  </tr>`;
+}
+
+function rapporti(k, d, a) {
+  const kd = d ? k / d : k, kda = d ? (k + a) / d : k + a;
+  const tono = (v) => (v >= 1 ? "good" : "bad");
+  return `<td class="${tono(kd)}">${dec(kd)}</td><td class="${tono(kda)}">${dec(kda)}</td>`;
+}
+
+function mediaRow(ms) {
+  const somma = (f) => ms.reduce((s, m) => s + (f(m) || 0), 0);
+  const k = somma((m) => m.kills), d = somma((m) => m.deaths), a = somma((m) => m.assists);
+  const colpi = (m) => (m.shots || {}).head + (m.shots || {}).body + (m.shots || {}).leg;
+  const tot = somma(colpi), testa = somma((m) => (m.shots || {}).head);
+  const conRR = ms.filter((m) => m.rrDelta != null);
+  const rr = conRR.reduce((s, m) => s + m.rrDelta, 0);
+  const n = ms.length;
+  const vinte = ms.filter((m) => m.won === true).length;
+  const perse = ms.filter((m) => m.won === false).length;
+  return `<tr>
+    <td class="res"><span class="esito tot">${vinte}–${perse}</span></td>
+    <td class="map l" colspan="2">${t("histAvg")} · ${n}</td>
+    <td>${(k / n).toFixed(1)}</td><td>${(d / n).toFixed(1)}</td><td>${(a / n).toFixed(1)}</td>
+    ${rapporti(k, d, a)}
+    <td>${Math.round(somma((m) => m.acs) / n)}</td>
+    <td>${tot ? Math.round(testa / tot * 100) + "%" : "—"}</td>
+    <td class="rr ${rr > 0 ? "up" : rr < 0 ? "down" : ""}">${conRR.length ? (rr > 0 ? "+" : "") + rr : "—"}</td>
   </tr>`;
 }
 
@@ -1261,11 +1503,8 @@ const dec = (v) => (v == null || v === "" ? "—" : Number(v).toFixed(2));
 const esc = (v) => String(v ?? "—").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const cell = (k, v, unit, tone) =>
-  `<div class="cell"><div class="label k">${k}</div>
-   <div class="v ${tone || ""}">${esc(v)}${unit ? `<small>${unit}</small>` : ""}</div></div>`;
-const cellText = (k, v, sub) =>
-  `<div class="cell wide"><div class="label k">${k} · ${esc(sub)}</div>
-   <div class="v up">${esc(v)}</div></div>`;
+  `<div class="cell ${tone || ""}"><div class="label k">${k}</div>
+   <div class="v">${esc(v)}${unit ? `<small>${unit}</small>` : ""}</div></div>`;
 
 let ws = null, gotState = false;
 
@@ -1436,7 +1675,7 @@ function mostraVersione(v) {
 mostraVersione("");
 
 document.querySelectorAll(".foldbtn").forEach((b) => {
-  b.addEventListener("click", () => {
+  b.closest("h2").addEventListener("click", () => {
     const k = b.dataset.fold;
     if (FOLDED.has(k)) FOLDED.delete(k); else FOLDED.add(k);
     localStorage.setItem("valoFolded", JSON.stringify([...FOLDED]));
@@ -1543,6 +1782,8 @@ function demo() {
       tier, tierName: TIERS[tier] || "—", stale: false,
       level: ri(40, 380),
       peakTier: peak, peakTierName: TIERS[peak] || "—",
+      lastTier: Math.max(tier - 1, 3), lastTierName: TIERS[Math.max(tier - 1, 3)] || "—",
+      lastRR: ri(0, 99),
       actGames: ri(0, 180),
       peakAct: pick(["V26 // ACT II", "V25 // ACT VI", "EPISODE 9 // ACT III"]),
       stats: { games: 3, kda: +(rnd() * 1.3 + 0.8).toFixed(2),
