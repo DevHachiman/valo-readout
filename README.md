@@ -36,7 +36,7 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### While you play
 
-<img width="1307" height="1242" alt="image" src="https://github.com/user-attachments/assets/3e33a0dd-27c8-4b17-91f3-22f8683bffaf" />
+<img width="1499" height="1034" alt="image" src="https://github.com/user-attachments/assets/68af8c86-2988-4616-8244-834e2fc03ca9" />
 
 | feature | what it does |
 |---|---|
@@ -50,7 +50,9 @@ Download the valo-readout.exe →  double-click  →  play
 
 ### Your own numbers
 
-<img width="1335" height="1080" alt="image" src="https://github.com/user-attachments/assets/8f5bdb0f-c7c6-41da-822e-c242735d72aa" />
+<img width="1513" height="1136" alt="image" src="https://github.com/user-attachments/assets/a86a8612-653b-4566-bee3-8325a9eed768" />
+<img width="1501" height="589" alt="image" src="https://github.com/user-attachments/assets/e0b476e0-05df-4a76-9f60-17b54ac0dc06" />
+<img width="1501" height="708" alt="image" src="https://github.com/user-attachments/assets/15eacd1d-f703-453c-92f5-04b5fb8ec9d1" />
 
 - **Rank** — current rank with its icon and an RR bar, peak rank with the act it was reached in.
 - **Act totals** — KDA, k/d, ACS, headshot, win rate, wins and losses, kills per round, plus your **top agent** and **best map**.
